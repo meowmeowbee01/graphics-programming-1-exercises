@@ -172,7 +172,7 @@ int main(int, char**)
 	// Specify settings.
 	constexpr uint32_t width{ 640 };
 	constexpr uint32_t height{ 480 };
-	const char* window_title{ "**Project Name** - **Student Name**" };
+	const char* window_title{ "**Graphics Programming 1 exercises** - **arno buyckx**" };
 
 	// Create context and construct objects.
 	Context context{};

@@ -13,7 +13,8 @@ using namespace gfx;
 // =============================================================================
 SoftwarePathTracer::SoftwarePathTracer(Context* const context)
 	: Renderer(context)
-{}
+{
+}
 
 SoftwarePathTracer::~SoftwarePathTracer() = default;
 
@@ -24,27 +25,36 @@ void SoftwarePathTracer::Render()
 {
 	assert(context_ && "Context not available!");
 
-	// DEMO CODE - TODO: remove!
 	const SurfaceInfo& surface_info = context_->surface_info;
-	for (uint32_t py = 0; py < surface_info.height; ++py)
+	for (uint32_t screen_x = 0; screen_x < surface_info.width; ++screen_x)
 	{
-		for (uint32_t px = 0; px < surface_info.width; ++px)
+		for (uint32_t screen_y = 0; screen_y < surface_info.height; ++screen_y)
 		{
-			// Calculate a gradient value based on pixel screen coordinates.
-			float gradient = px / static_cast<float>(surface_info.width);
-			gradient += py / static_cast<float>(surface_info.height);
-			gradient /= 2.0f;
-
-			// Convert gradient value to color.
-			ColorRgba final_color = { gradient, gradient, gradient };
-			final_color.MaxToOne();
-
-			// Write to surface
-			surface_info.pixel_buffer[px + (py * surface_info.width)] = SDL_MapRGB(
-				surface_info.pixel_format_details, nullptr,
-				static_cast<uint8_t>(final_color.r * 255),
-				static_cast<uint8_t>(final_color.g * 255),
-				static_cast<uint8_t>(final_color.b * 255));
+			float ndc_x = 2.f * ((screen_x + 0.5f) / surface_info.width) - 1.f;
+			float ndc_y = 1.f - 2.f * ((screen_y + 0.5f) / surface_info.height);
+			Vector3 ray_direction
+			{
+				ndc_x,
+				ndc_y,
+				1.f
+			};
+			ray_direction.Normalize();
+			ColorRgba color
+			{
+				ray_direction.x,
+				ray_direction.y,
+				ray_direction.z
+			};
+			color.MaxToOne();
+			surface_info.pixel_buffer[screen_x + (screen_y * surface_info.width)] =
+				SDL_MapRGB
+				(
+					surface_info.pixel_format_details,
+					nullptr,
+					static_cast<uint8_t>(color.r * 255),
+					static_cast<uint8_t>(color.g * 255),
+					static_cast<uint8_t>(color.b * 255)
+				);
 		}
 	}
 }
