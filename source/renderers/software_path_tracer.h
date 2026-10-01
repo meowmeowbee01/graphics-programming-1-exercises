@@ -18,7 +18,7 @@ namespace gfx
 	{
 	public:
 		//--- Construction / Destruction ---
-		SoftwarePathTracer(Context* const context);
+		SoftwarePathTracer(Context* context);
 		~SoftwarePathTracer() override;
 
 		SoftwarePathTracer(const SoftwarePathTracer&) = delete;
@@ -28,6 +28,39 @@ namespace gfx
 
 		//--- Public Functions ---
 		void Render() override;
+
+	private:
+		void RenderPixel
+		(
+			uint32_t screen_x,
+			uint32_t screen_y
+		) const;
+
+		static Ray GetRay
+		(
+			uint32_t screen_x,
+			uint32_t screen_y,
+			uint32_t screen_width,
+			uint32_t screen_height
+		);
+
+		ColorRgba GetColor
+		(
+			const RayHitRecord& closest_hit_record, const Sphere& sphere
+		) const;
+		ColorRgba GetColor
+		(
+			const RayHitRecord& closest_hit_record, const Plane& plane
+		) const;
+		static ColorRgba GetDepthColor(const RayHitRecord& closest_hit_record);
+		static ColorRgba GetNormalColor(const ShadingInput& shading_input);
+
+		void WriteColor
+		(
+			uint32_t screen_x,
+			uint32_t screen_y,
+			ColorRgba color
+		) const;
 	};
 }
 #endif //SOFTWARE_PATH_TRACER_HEADER
