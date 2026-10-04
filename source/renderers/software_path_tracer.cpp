@@ -34,22 +34,12 @@ void SoftwarePathTracer::Render()
 }
 
 //private
-
 void SoftwarePathTracer::RenderPixel
 (
 	const uint32_t screen_x,
 	const uint32_t screen_y
 ) const
 {
-	// const Sphere test_sphere{{0.f, 0.f, 100.f}, 50.f};
-	// const Plane test_plane{{0.f, -50.f, 0.f}, {0.f, 1.f, 0.f}};
-	const Plane test_plane
-	{
-		{0.f, -50.f, 0.f},
-		{0.f, 1.f, 0.f},
-		true,
-		Vector2{100.f, 100.f},
-	};
 	const Ray ray
 	{
 		GetRay
@@ -62,13 +52,23 @@ void SoftwarePathTracer::RenderPixel
 	};
 	if
 	(
-		RayHitRecord closest_hit_record{};
-		HitTestPlane(test_plane, ray, closest_hit_record)
-		// HitTestSphere(test_sphere, ray, closest_hit_record)
+		RayHitRecord hit_record{};
+		HitTest(ray, hit_record)
 	)
 	{
-		WriteColor(screen_x, screen_y, GetColor(closest_hit_record, test_plane));
+		const auto& scene{*context_->scene_manager->GetActiveScene()};
+		const auto object{scene.objects.at(hit_record.object_index)};
+		const auto* primitive{scene.primitives_factory.Get(object.primitive_index)};
+		const auto point{ray.origin + ray.direction * hit_record.t};
+		const auto normal{GetNormal(primitive, point)};
+		const ShadingInput shading_input
+		{
+			.world_normal = normal,
+			.world_position = point
+		};
+		Visualize(screen_x, screen_y, hit_record, shading_input);
 	}
+	else WriteColor(screen_x, screen_y, ColorRgba{0.f});
 }
 
 Ray SoftwarePathTracer::GetRay
@@ -77,105 +77,135 @@ Ray SoftwarePathTracer::GetRay
 	const uint32_t screen_y,
 	const uint32_t screen_width,
 	const uint32_t screen_height
-)
+) const
 {
 	const float aspect_ratio
 	{
 		static_cast<float>(screen_width) / static_cast<float>(screen_height)
 	};
+	const auto camera{context_->scene_manager->GetActiveScene()->camera};
+	const float fov_radians
+	{
+		std::numbers::pi_v<float> / 180.f * camera.GetFovAngle()
+	};
+	const float fov{std::tanf(fov_radians / 2)};
 	const float ndc_x
 	{
-		(2.f * ((screen_x + 0.5f) / screen_width) - 1.f) * aspect_ratio
+		(2.f * ((screen_x + 0.5f) / screen_width) - 1.f) * aspect_ratio * fov
 	};
-	const float ndc_y{1.f - 2.f * ((screen_y + 0.5f) / screen_height)};
+	const float ndc_y{(1.f - 2.f * ((screen_y + 0.5f) / screen_height)) * fov};
 	Vector3 ray_direction{ndc_x, ndc_y, 1.f};
 	ray_direction.Normalize();
-	const Ray ray
+	const Vector3 origin{camera.GetPosition()};
+	return Ray
 	{
-		.origin = {0.f, 0.f, 0.f},
+		.origin = origin,
 		.direction = ray_direction
 	};
-	return ray;
 }
 
-ColorRgba SoftwarePathTracer::GetColor
+bool SoftwarePathTracer::HitTest
 (
-	const RayHitRecord& closest_hit_record,
-	const Sphere& sphere
+	const Ray& ray,
+	RayHitRecord& closest_hit_record
 ) const
 {
-	const Vector3 world_position
+	bool did_hit{false};
+	const auto& scene{*context_->scene_manager->GetActiveScene()};
+	for (size_t i{0}; i < scene.objects.size(); ++i)
 	{
-		closest_hit_record.ray.origin +
-		closest_hit_record.ray.direction * closest_hit_record.t
-	};
-	const Vector3 world_normal{(world_position - sphere.origin).Normalized()};
-	const ShadingInput shading_input
-	{
-		.view_direction{},
-		.light_direction{},
-		.world_normal{world_normal},
-		.world_position{world_position},
-	};
-	if (context_->debug_params.visualization_mode == VisualizationMode::kDepth)
-		return GetDepthColor(closest_hit_record);
-	if (context_->debug_params.visualization_mode == VisualizationMode::kNormals)
-		return GetNormalColor(shading_input);
-	//context_->debug_params.visualization_mode == VisualizationMode::kNone
-	return ColorRgba{1.f, 0.f, 0.f};
+		const auto& object{scene.objects.at(i)};
+		const auto primitive{scene.primitives_factory.Get(object.primitive_index)};
+		if
+		(
+			RayHitRecord hit_record{.object_index = static_cast<uint32_t>(i)};
+			HitTestPrimitive(primitive, ray, hit_record) &&
+			(!did_hit || closest_hit_record.t > hit_record.t)
+		)
+		{
+			closest_hit_record = hit_record;
+			did_hit = true;
+		}
+	}
+	return did_hit;
 }
 
-ColorRgba SoftwarePathTracer::GetColor
+Vector3 SoftwarePathTracer::GetNormal
 (
-	const RayHitRecord& closest_hit_record,
-	const Plane& plane
-) const
-{
-	const Vector3 world_position
-	{
-		closest_hit_record.ray.origin +
-		closest_hit_record.ray.direction * closest_hit_record.t
-	};
-	const ShadingInput shading_input
-	{
-		.view_direction{},
-		.light_direction{},
-		.world_normal{plane.normal},
-		.world_position{world_position},
-	};
-	if (context_->debug_params.visualization_mode == VisualizationMode::kDepth)
-		return GetDepthColor(closest_hit_record);
-	if (context_->debug_params.visualization_mode == VisualizationMode::kNormals)
-		return GetNormalColor(shading_input);
-	//context_->debug_params.visualization_mode == VisualizationMode::kNone
-	return ColorRgba{1.f, 0.f, 0.f};
-}
-
-ColorRgba SoftwarePathTracer::GetDepthColor
-(
-	const RayHitRecord& closest_hit_record
+	const Primitive* primitive,
+	Vector3 point
 )
 {
-	constexpr float max_depth{100.f};
-	const float scaled_t
+	switch (primitive->type)
 	{
-		1.f - std::clamp(closest_hit_record.t / max_depth, 0.f, 1.f)
-	};
-	return ColorRgba{scaled_t};
+	case PrimitiveType::kSphere:
+		{
+			const Sphere sphere{*static_cast<const Sphere*>(primitive)};
+			return (point - sphere.origin).Normalized();
+		}
+	case PrimitiveType::kPlane:
+		{
+			const Plane plane{*static_cast<const Plane*>(primitive)};
+			return plane.normal;
+		}
+	case PrimitiveType::kTriangle:
+		{
+			const Triangle triangle{*static_cast<const Triangle*>(primitive)};
+			return triangle.normal;
+		}
+	default:
+		assert(false && "no normal");
+		return Vector3{};
+	}
 }
 
-ColorRgba SoftwarePathTracer::GetNormalColor(const ShadingInput& shading_input)
+void SoftwarePathTracer::Visualize
+(
+	const uint32_t screen_x,
+	const uint32_t screen_y,
+	const RayHitRecord& hit_record,
+	const ShadingInput& shading_input
+) const
 {
-	const Vector3& n{shading_input.world_normal};
-	return ColorRgba
+	switch (context_->debug_params.visualization_mode)
 	{
-		(n.x + 1.f) * 0.5f,
-		(n.y + 1.f) * 0.5f,
-		(n.z + 1.f) * 0.5f,
-	};
+	case VisualizationMode::kDepth:
+		{
+			constexpr float max_depth{100.f};
+			const float scaled_t
+			{
+				1.f - std::clamp(hit_record.t / max_depth, 0.f, 1.f)
+			};
+			WriteColor(screen_x, screen_y, ColorRgba{scaled_t});
+		}
+		break;
+	case VisualizationMode::kNormals:
+		{
+			const ColorRgba color
+			{
+				(shading_input.world_normal.x + 1.f) * 0.5f,
+				(shading_input.world_normal.y + 1.f) * 0.5f,
+				(shading_input.world_normal.z + 1.f) * 0.5f
+			};
+			WriteColor(screen_x, screen_y, color);
+		}
+		break;
+	default:
+		{
+			const auto index{hit_record.object_index};
+			const ColorRgba color{
+				static_cast<float>(index & 1),
+				static_cast<float>((index >> 1) & 1),
+				static_cast<float>((index >> 2) & 1)
+			};
+			WriteColor(screen_x, screen_y, color);
+		}
+		break;
+	}
 }
 
-void SoftwarePathTracer::WriteColor(
+void SoftwarePathTracer::WriteColor
+(
 	const uint32_t screen_x,
 	const uint32_t screen_y,
 	const ColorRgba color

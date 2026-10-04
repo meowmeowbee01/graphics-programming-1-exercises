@@ -25,26 +25,6 @@ namespace gfx
 		const bool ignore_hit_record = false
 	)
 	{
-		// //analytic solution: confused about tMin and tMax
-		// //t is intersection point(s)
-		// //at^2+bt+c=0
-		// const float a{Vector3::Dot(ray.direction, ray.direction)};
-		// const float b
-		// {
-		// 	Vector3::Dot(ray.direction * 2.f, ray.origin - sphere.origin)
-		// };
-		// const float c
-		// {
-		// 	Vector3::Dot(ray.origin - sphere.origin, ray.origin - sphere.origin) -
-		// 	sphere.radius * sphere.radius
-		// };
-		// const float discriminant{b * b - 4.f * a * c};
-		// if (discriminant <= 0.f) return false;
-		// const float t1{(-b + discriminant) / (2.f * a)};
-		// const float t2{(-b - discriminant) / (2.f * a)};
-		// const Vector3 intersection_point1{ray.origin + ray.direction * t1};
-		// const Vector3 intersection_point2{ray.origin + ray.direction * t2};
-		// //tMin tMax???
 		const Vector3 origin_difference{sphere.origin - ray.origin};
 		const float projection_size{Vector3::Dot(origin_difference, ray.direction)};
 		const float rejection_size
@@ -54,14 +34,13 @@ namespace gfx
 		// r == reject for tangential hit
 		if (sphere.radius <= rejection_size) return false;
 		if (ignore_hit_record) return true;
-
 		const float projection_distance_difference
 		{
 			std::sqrtf(std::pow(sphere.radius, 2) - std::pow(rejection_size, 2))
 		};
-		const float distance{projection_size - projection_distance_difference};
+		const float t{projection_size - projection_distance_difference};
 		hit_record.ray = ray;
-		hit_record.t = distance;
+		hit_record.t = t;
 		return true;
 	}
 
@@ -97,12 +76,12 @@ namespace gfx
 			const float t_prime{Vector3::Dot(p, plane.tangent)};
 			const Vector3 b{Vector3::Cross(plane.normal, plane.tangent)};
 			const float b_prime{Vector3::Dot(p, b)};
-			const bool inBounds
+			const bool in_bounds
 			{
 				std::abs(t_prime) <= plane.half_extent.value().x &&
 				std::abs(b_prime) <= plane.half_extent.value().y
 			};
-			if (!inBounds) return false;
+			if (!in_bounds) return false;
 		}
 		if (ignore_hit_record) return true;
 		hit_record.ray = ray;
@@ -111,8 +90,13 @@ namespace gfx
 	}
 
 	[[maybe_unused]]
-	static bool HitTestTriangle(const Triangle& triangle, const Ray& ray,
-															RayHitRecord& hit_record, const bool ignore_hit_record = false)
+	static bool HitTestTriangle
+	(
+		const Triangle& triangle,
+		const Ray& ray,
+		RayHitRecord& hit_record,
+		const bool ignore_hit_record = false
+	)
 	{
 		//TODO
 		assert(false && "Not Implemented");
@@ -131,6 +115,38 @@ namespace gfx
 		(void)aabb;
 		(void)ray;
 		return false;
+	}
+
+	[[maybe_unused]]
+	static bool HitTestPrimitive
+	(
+		const Primitive* primitive,
+		const Ray& ray,
+		RayHitRecord& hit_record,
+		const bool ignore_hit_record = false
+	)
+	{
+		switch (primitive->type)
+		{
+		case PrimitiveType::kPlane:
+			{
+				const Plane plane{*static_cast<const Plane*>(primitive)};
+				return HitTestPlane(plane, ray, hit_record, ignore_hit_record);
+			}
+		case PrimitiveType::kSphere:
+			{
+				const Sphere sphere{*static_cast<const Sphere*>(primitive)};
+				return HitTestSphere(sphere, ray, hit_record, ignore_hit_record);
+			}
+		case PrimitiveType::kTriangle:
+			{
+				const Triangle triangle{*static_cast<const Triangle*>(primitive)};
+				return HitTestTriangle(triangle, ray, hit_record, ignore_hit_record);
+			}
+		default:
+			assert(false && "Not Implemented");
+			return false;
+		}
 	}
 }
 #endif //INTERSECTIONS_HEADER

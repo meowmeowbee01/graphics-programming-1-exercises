@@ -36,24 +36,31 @@ namespace gfx
 			uint32_t screen_y
 		) const;
 
-		static Ray GetRay
+		Ray GetRay
 		(
 			uint32_t screen_x,
 			uint32_t screen_y,
 			uint32_t screen_width,
 			uint32_t screen_height
+		) const;
+
+		bool HitTest(
+			const Ray& ray,
+			RayHitRecord& closest_hit_record
+		) const;
+
+		static Vector3 GetNormal(
+			const Primitive* primitive,
+			Vector3 point
 		);
 
-		ColorRgba GetColor
+		void Visualize
 		(
-			const RayHitRecord& closest_hit_record, const Sphere& sphere
+			uint32_t screen_x,
+			uint32_t screen_y,
+			const RayHitRecord& hit_record,
+			const ShadingInput& shading_input
 		) const;
-		ColorRgba GetColor
-		(
-			const RayHitRecord& closest_hit_record, const Plane& plane
-		) const;
-		static ColorRgba GetDepthColor(const RayHitRecord& closest_hit_record);
-		static ColorRgba GetNormalColor(const ShadingInput& shading_input);
 
 		void WriteColor
 		(
