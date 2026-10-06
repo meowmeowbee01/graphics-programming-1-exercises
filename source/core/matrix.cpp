@@ -16,12 +16,30 @@ using namespace gfx;
 //--- Framework Includes ---
 #include <primitives.h>
 
-Matrix::Matrix(const Vector3& x_axis, const Vector3& y_axis, const Vector3& z_axis, const Vector3& t) :
-	Matrix({ x_axis.x, x_axis.y, x_axis.z, 0 }, { y_axis.x, y_axis.y, y_axis.z, 0 },
-		{ z_axis.x, z_axis.y, z_axis.z, 0 }, { t.x, t.y, t.z, 1 })
-{}
+Matrix::Matrix
+(
+	const Vector3& x_axis,
+	const Vector3& y_axis,
+	const Vector3& z_axis,
+	const Vector3& t
+)
+	: Matrix
+	(
+		{x_axis.x, x_axis.y, x_axis.z, 0},
+		{y_axis.x, y_axis.y, y_axis.z, 0},
+		{z_axis.x, z_axis.y, z_axis.z, 0},
+		{t.x, t.y, t.z, 1}
+	)
+{
+}
 
-Matrix::Matrix(const Vector4& x_axis, const Vector4& y_axis, const Vector4& z_axis, const Vector4& t)
+Matrix::Matrix
+(
+	const Vector4& x_axis,
+	const Vector4& y_axis,
+	const Vector4& z_axis,
+	const Vector4& t
+)
 {
 	data[0] = x_axis;
 	data[1] = y_axis;
@@ -75,12 +93,14 @@ Vector3 Matrix::TransformVector(const Vector3& v) const
 	return TransformVector(v[0], v[1], v[2]);
 }
 
-Vector3 Matrix::TransformVector(const float x, const float y, const float z) const
+Vector3 Matrix::TransformVector
+(const float x, const float y, const float z) const
 {
 	return Vector3{
 		data[0].x * x + data[1].x * y + data[2].x * z,
 		data[0].y * x + data[1].y * y + data[2].y * z,
-		data[0].z * x + data[1].z * y + data[2].z * z };
+		data[0].z * x + data[1].z * y + data[2].z * z
+	};
 }
 
 Vector4 Matrix::TransformVector(const Vector4& v) const
@@ -88,14 +108,16 @@ Vector4 Matrix::TransformVector(const Vector4& v) const
 	return TransformVector(v[0], v[1], v[2], v[3]);
 }
 
-Vector4 Matrix::TransformVector(const float x, const float y, const float z, const float w) const
+Vector4 Matrix::TransformVector
+(const float x, const float y, const float z, const float w) const
 {
 	(void)w;
 	return Vector4{
 		data[0].x * x + data[1].x * y + data[2].x * z,
 		data[0].y * x + data[1].y * y + data[2].y * z,
 		data[0].z * x + data[1].z * y + data[2].z * z,
-		0.f };
+		0.f
+	};
 }
 
 Vector3 Matrix::TransformPoint(const Vector3& p) const
@@ -103,12 +125,14 @@ Vector3 Matrix::TransformPoint(const Vector3& p) const
 	return TransformPoint(p[0], p[1], p[2]);
 }
 
-Vector3 Matrix::TransformPoint(const float x, const float y, const float z) const
+Vector3 Matrix::TransformPoint
+(const float x, const float y, const float z) const
 {
 	return Vector3{
 		data[0].x * x + data[1].x * y + data[2].x * z + data[3].x,
 		data[0].y * x + data[1].y * y + data[2].y * z + data[3].y,
-		data[0].z * x + data[1].z * y + data[2].z * z + data[3].z };
+		data[0].z * x + data[1].z * y + data[2].z * z + data[3].z
+	};
 }
 
 Vector4 Matrix::TransformPoint(const Vector4& p) const
@@ -116,22 +140,25 @@ Vector4 Matrix::TransformPoint(const Vector4& p) const
 	return TransformPoint(p.x, p.y, p.z, p.w);
 }
 
-Vector4 Matrix::TransformPoint(const float x, const float y, const float z, const float w) const
+Vector4 Matrix::TransformPoint
+(const float x, const float y, const float z, const float w) const
 {
 	return Vector4{
 		data[0].x * x + data[1].x * y + data[2].x * z + data[3].x * w,
 		data[0].y * x + data[1].y * y + data[2].y * z + data[3].y * w,
 		data[0].z * x + data[1].z * y + data[2].z * z + data[3].z * w,
-		data[0].w * x + data[1].w * y + data[2].w * z + data[3].w * w };
+		data[0].w * x + data[1].w * y + data[2].w * z + data[3].w * w
+	};
 }
 
-Vector3 Matrix::TransformNormal(const Vector3& n, const bool is_non_uniform) const
+Vector3 Matrix::TransformNormal
+(const Vector3& n, const bool is_non_uniform) const
 {
 	if (!is_non_uniform)
 		return TransformVector(n).Normalized();
 
 	const Matrix& inverse = GetInverse();
-	const Matrix transpose_inverse = Matrix::Transpose(inverse);
+	const Matrix transpose_inverse = Transpose(inverse);
 	return transpose_inverse.TransformVector(n).Normalized();
 }
 
@@ -191,10 +218,7 @@ const Matrix& Matrix::Inverse()
 	// Fill left side with current matrix.
 	for (uint8_t i = 0; i < 4; i++)
 	{
-		for (uint8_t j = 0; j < 4; j++)
-		{
-			augmented[i][j] = data[i][j];
-		}
+		for (uint8_t j = 0; j < 4; j++) { augmented[i][j] = data[i][j]; }
 	}
 
 	// Fill right side with identity matrix.
@@ -279,10 +303,7 @@ const Matrix& Matrix::Transpose()
 	Matrix result = {};
 	for (uint8_t r = 0; r < 4; ++r)
 	{
-		for (uint8_t c = 0; c < 4; ++c)
-		{
-			result[r][c] = data[c][r];
-		}
+		for (uint8_t c = 0; c < 4; ++c) { result[r][c] = data[c][r]; }
 	}
 
 	data[0] = result[0];
@@ -298,7 +319,7 @@ const Matrix& Matrix::GetInverse() const
 	if (!inverse_computed.load(std::memory_order_acquire))
 	{
 		cached_inverse = std::make_unique<Matrix>(*this);
-		const float det{ cached_inverse->Determinant() };
+		const float det{cached_inverse->Determinant()};
 		// If matrix is not invertible, use identity instead!
 		if (std::abs(det) < std::numeric_limits<float>::epsilon())
 			*cached_inverse = CreateIdentity();
@@ -311,12 +332,13 @@ const Matrix& Matrix::GetInverse() const
 
 float Matrix::Determinant() const
 {
-	const float a{ data[0][0] }, b{ data[0][1] }, c{ data[0][2] }, d{ data[0][3] };
-	const float e{ data[1][0] }, f{ data[1][1] }, g{ data[1][2] }, h{ data[1][3] };
-	const float i{ data[2][0] }, j{ data[2][1] }, k{ data[2][2] }, l{ data[2][3] };
-	const float m{ data[3][0] }, n{ data[3][1] }, o{ data[3][2] }, p{ data[3][3] };
+	const float a{data[0][0]}, b{data[0][1]}, c{data[0][2]}, d{data[0][3]};
+	const float e{data[1][0]}, f{data[1][1]}, g{data[1][2]}, h{data[1][3]};
+	const float i{data[2][0]}, j{data[2][1]}, k{data[2][2]}, l{data[2][3]};
+	const float m{data[3][0]}, n{data[3][1]}, o{data[3][2]}, p{data[3][3]};
 
-	return a * (f * (k * p - l * o) - g * (j * p - l * n) + h * (j * o - k * n)) -
+	return
+		a * (f * (k * p - l * o) - g * (j * p - l * n) + h * (j * o - k * n)) -
 		b * (e * (k * p - l * o) - g * (i * p - l * m) + h * (i * o - k * m)) +
 		c * (e * (j * p - l * n) - f * (i * p - l * m) + h * (i * n - j * m)) -
 		d * (e * (j * o - k * n) - f * (i * o - k * m) + g * (i * n - j * m));
@@ -336,48 +358,47 @@ Matrix Matrix::Inverse(const Matrix& m)
 	return out;
 }
 
-Matrix Matrix::CreateLookAtLH(const Vector3& origin, const Vector3& forward, const Vector3& up)
+Matrix Matrix::CreateLookAtLh
+(
+	const Vector3& origin,
+	const Vector3& forward,
+	const Vector3& up
+)
 {
 	//TODO
 	assert(false && "Not Implemented");
-	(void)origin; (void)forward; (void)up;
+	(void)origin;
+	(void)forward;
+	(void)up;
 	return {};
 }
 
-Matrix Matrix::CreatePerspectiveFovLH(const float fov_y, const float aspect, const float zn, const float zf)
+Matrix Matrix::CreatePerspectiveFovLH
+(const float fov_y, const float aspect, const float zn, const float zf)
 {
 	//TODO
 	assert(false && "Not Implemented");
-	(void)fov_y; (void)aspect; (void)zn; (void)zf;
+	(void)fov_y;
+	(void)aspect;
+	(void)zn;
+	(void)zf;
 	return {};
 }
 
 
-Vector3 Matrix::GetAxisX() const
-{
-	return data[0];
-}
+Vector3 Matrix::GetAxisX() const { return data[0]; }
 
-Vector3 Matrix::GetAxisY() const
-{
-	return data[1];
-}
+Vector3 Matrix::GetAxisY() const { return data[1]; }
 
-Vector3 Matrix::GetAxisZ() const
-{
-	return data[2];
-}
+Vector3 Matrix::GetAxisZ() const { return data[2]; }
 
-Vector3 Matrix::GetTranslation() const
-{
-	return data[3];
-}
+Vector3 Matrix::GetTranslation() const { return data[3]; }
 
 Vector3 Matrix::GetScale() const
 {
-	const Vector3 x_axis{ GetAxisX() };
-	const Vector3 y_axis{ GetAxisY() };
-	const Vector3 z_axis{ GetAxisZ() };
+	const Vector3 x_axis{GetAxisX()};
+	const Vector3 y_axis{GetAxisY()};
+	const Vector3 z_axis{GetAxisZ()};
 
 	return Vector3{
 		x_axis.Magnitude(),
@@ -386,34 +407,33 @@ Vector3 Matrix::GetScale() const
 	};
 }
 
-void Matrix::Decompose(Vector3& scale, Vector3& rotation, Vector3& translation) const
+void Matrix::Decompose
+(Vector3& scale, Vector3& rotation, Vector3& translation) const
 {
 	// Based on standard TRS (Translation-Rotation-Scale).
 	translation = GetTranslation();
 	scale = GetScale();
 
-	const Vector3 x_axis{ GetAxisX() / scale.x };
-	const Vector3 y_axis{ GetAxisY() / scale.y };
-	const Vector3 z_axis{ GetAxisZ() / scale.z };
+	const Vector3 x_axis{GetAxisX() / scale.x};
+	const Vector3 y_axis{GetAxisY() / scale.y};
+	const Vector3 z_axis{GetAxisZ() / scale.z};
 
 	rotation.x = std::atan2(y_axis.z, z_axis.z);
-	rotation.y = std::atan2(-x_axis.z, std::sqrt(y_axis.z * y_axis.z + z_axis.z * z_axis.z));
+	rotation.y = std::atan2
+		(-x_axis.z, std::sqrt(y_axis.z * y_axis.z + z_axis.z * z_axis.z));
 	rotation.z = std::atan2(x_axis.y, x_axis.x);
 }
 
-Matrix Matrix::CreateIdentity()
-{
-	return Matrix{};
-}
+Matrix Matrix::CreateIdentity() { return Matrix{}; }
 
 Matrix Matrix::CreateTranslation(const float x, const float y, const float z)
 {
-	return CreateTranslation({ x, y, z });
+	return CreateTranslation({x, y, z});
 }
 
 Matrix Matrix::CreateTranslation(const Vector3& t)
 {
-	return { Vector3::UnitX(), Vector3::UnitY(), Vector3::UnitZ(), t };
+	return {Vector3::UnitX(), Vector3::UnitY(), Vector3::UnitZ(), t};
 }
 
 Matrix Matrix::CreateRotationX(const float pitch, const bool in_degrees)
@@ -423,7 +443,8 @@ Matrix Matrix::CreateRotationX(const float pitch, const bool in_degrees)
 		{1, 0, 0, 0},
 		{0, std::cos(angle), -std::sin(angle), 0},
 		{0, std::sin(angle), std::cos(angle), 0},
-		{0, 0, 0, 1} };
+		{0, 0, 0, 1}
+	};
 }
 
 Matrix Matrix::CreateRotationY(const float yaw, const bool in_degrees)
@@ -433,7 +454,8 @@ Matrix Matrix::CreateRotationY(const float yaw, const bool in_degrees)
 		{std::cos(angle), 0, std::sin(angle), 0},
 		{0, 1, 0, 0},
 		{-std::sin(angle), 0, std::cos(angle), 0},
-		{0, 0, 0, 1} };
+		{0, 0, 0, 1}
+	};
 }
 
 Matrix Matrix::CreateRotationZ(const float roll, const bool in_degrees)
@@ -443,41 +465,66 @@ Matrix Matrix::CreateRotationZ(const float roll, const bool in_degrees)
 		{std::cos(angle), -std::sin(angle), 0, 0},
 		{std::sin(angle), std::cos(angle), 0, 0},
 		{0, 0, 1, 0},
-		{0, 0, 0, 1} };
+		{0, 0, 0, 1}
+	};
 }
 
 Matrix Matrix::CreateRotation(const Vector3& r, const bool in_degrees)
 {
-	return CreateRotationX(r[0], in_degrees) * CreateRotationY(r[1], in_degrees) * CreateRotationZ(r[2], in_degrees);
+	return CreateRotationX(r[0], in_degrees) * CreateRotationY
+		(r[1], in_degrees) * CreateRotationZ(r[2], in_degrees);
 }
 
-Matrix Matrix::CreateRotation(float pitch, float yaw, float roll, const bool in_degrees)
+Matrix Matrix::CreateRotation
+(float pitch, float yaw, float roll, const bool in_degrees)
 {
-	return CreateRotation({ pitch, yaw, roll }, in_degrees);
+	return CreateRotation({pitch, yaw, roll}, in_degrees);
 }
 
-Matrix Matrix::CreateRotationAxis(const Vector3& axis, const float angle, const bool in_degrees)
+Matrix Matrix::CreateRotationAxis
+(const Vector3& axis, const float angle, const bool in_degrees)
 {
-	const float rad_angle{ in_degrees ? ToRadians(angle) : angle };
-	const Vector3 normalized_axis{ axis.Normalized() };
-	const float cos_angle{ std::cos(rad_angle) };
-	const float sin_angle{ std::sin(rad_angle) };
-	const float one_minus_cos{ 1.0f - cos_angle };
+	const float rad_angle{in_degrees ? ToRadians(angle) : angle};
+	const Vector3 normalized_axis{axis.Normalized()};
+	const float cos_angle{std::cos(rad_angle)};
+	const float sin_angle{std::sin(rad_angle)};
+	const float one_minus_cos{1.0f - cos_angle};
 
-	const float x{ normalized_axis.x };
-	const float y{ normalized_axis.y };
-	const float z{ normalized_axis.z };
-	
+	const float x{normalized_axis.x};
+	const float y{normalized_axis.y};
+	const float z{normalized_axis.z};
+
 	return Matrix{
-		{cos_angle + x * x * one_minus_cos, x * y * one_minus_cos - z * sin_angle, x * z * one_minus_cos + y * sin_angle, 0},
-		{y * x * one_minus_cos + z * sin_angle, cos_angle + y * y * one_minus_cos, y * z * one_minus_cos - x * sin_angle, 0},
-		{z * x * one_minus_cos - y * sin_angle, z * y * one_minus_cos + x * sin_angle, cos_angle + z * z * one_minus_cos, 0},
-		{0, 0, 0, 1}};
+		{
+			cos_angle + x * x * one_minus_cos,
+			x * y * one_minus_cos - z * sin_angle,
+			x * z * one_minus_cos + y * sin_angle,
+			0
+		},
+		{
+			y * x * one_minus_cos + z * sin_angle,
+			cos_angle + y * y * one_minus_cos,
+			y * z * one_minus_cos - x * sin_angle,
+			0
+		},
+		{
+			z * x * one_minus_cos - y * sin_angle,
+			z * y * one_minus_cos + x * sin_angle,
+			cos_angle + z * z * one_minus_cos,
+			0
+		},
+		{0, 0, 0, 1}
+	};
 }
 
 Matrix Matrix::CreateScale(float sx, float sy, float sz)
 {
-	return { {sx, 0, 0, 0}, {0, sy, 0, 0}, {0, 0, sz, 0}, {0, 0, 0, 1} };
+	return {
+		{sx, 0, 0, 0},
+		{0, sy, 0, 0},
+		{0, 0, sz, 0},
+		{0, 0, 0, 1}
+	};
 }
 
 Matrix Matrix::CreateScale(const Vector3& s)
@@ -536,11 +583,11 @@ const Matrix& Matrix::operator*=(const Matrix& m)
 bool Matrix::operator==(const Matrix& m) const
 {
 	auto eq = [](const float x, const float y)
-		{
-			const float diff = std::fabs(x - y);
-			const float scale = std::max({ 1.0f, std::fabs(x), std::fabs(y) });
-			return diff <= std::numeric_limits<float>::epsilon() * scale;
-		};
+	{
+		const float diff = std::fabs(x - y);
+		const float scale = std::max({1.0f, std::fabs(x), std::fabs(y)});
+		return diff <= std::numeric_limits<float>::epsilon() * scale;
+	};
 
 	for (uint8_t i = 0; i < 4; ++i)
 	{
@@ -553,7 +600,4 @@ bool Matrix::operator==(const Matrix& m) const
 	return true;
 }
 
-bool Matrix::operator!=(const Matrix& m) const
-{
-	return !(*this == m);
-}
+bool Matrix::operator!=(const Matrix& m) const { return !(*this == m); }
