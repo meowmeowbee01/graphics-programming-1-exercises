@@ -44,14 +44,18 @@ namespace gfx
 			uint32_t screen_height
 		) const;
 
-		bool HitTest(
+		bool HitTest
+		(
 			const Ray& ray,
 			RayHitRecord& closest_hit_record
 		) const;
 
-		static Vector3 GetNormal(
-			const Primitive* primitive,
-			Vector3 point
+		static Vector3 GetNormal
+		(
+			const Primitive& primitive,
+			const Vector3& point,
+			const std::optional<std::array<uint32_t, 3>>& vertex_indices,
+			std::optional<Vector2> barycentric_coordinates
 		);
 
 		void Visualize

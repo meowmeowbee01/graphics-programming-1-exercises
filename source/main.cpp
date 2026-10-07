@@ -43,39 +43,42 @@ using namespace gfx;
 #else
 #define CPU_FRAME_LIMITER_ENABLED 1
 #endif
-class FrameLimiter final
+namespace
 {
-	double target_ms_{0.0};
-	std::chrono::high_resolution_clock::time_point frame_start_ = {};
-
-public:
-	FrameLimiter(const double target_fps)
-		: target_ms_
-			(1000.0 / target_fps),
-			frame_start_(std::chrono::high_resolution_clock::now())
+	class FrameLimiter final
 	{
-	}
+		double target_ms_{0.0};
+		std::chrono::high_resolution_clock::time_point frame_start_ = {};
 
-	~FrameLimiter()
-	{
-		const auto frame_end
+	public:
+		FrameLimiter(const double target_fps)
+			: target_ms_
+				(1000.0 / target_fps),
+				frame_start_(std::chrono::high_resolution_clock::now())
 		{
-			std::chrono::high_resolution_clock::now()
-		};
-		const double frame_duration_ms{
-			std::chrono::duration<double, std::milli>
-			(frame_end - frame_start_).count()
-		};
+		}
 
-		if (frame_duration_ms < target_ms_)
-			SDL_Delay(static_cast<uint32_t>(target_ms_ - frame_duration_ms));
-	}
+		~FrameLimiter()
+		{
+			const auto frame_end
+			{
+				std::chrono::high_resolution_clock::now()
+			};
+			const double frame_duration_ms{
+				std::chrono::duration<double, std::milli>
+				(frame_end - frame_start_).count()
+			};
 
-	FrameLimiter(const FrameLimiter&) = delete;
-	FrameLimiter& operator=(const FrameLimiter&) = delete;
-	FrameLimiter(FrameLimiter&&) = delete;
-	FrameLimiter& operator=(FrameLimiter&&) = delete;
-};
+			if (frame_duration_ms < target_ms_)
+				SDL_Delay(static_cast<uint32_t>(target_ms_ - frame_duration_ms));
+		}
+
+		FrameLimiter(const FrameLimiter&) = delete;
+		FrameLimiter& operator=(const FrameLimiter&) = delete;
+		FrameLimiter(FrameLimiter&&) = delete;
+		FrameLimiter& operator=(FrameLimiter&&) = delete;
+	};
+}
 
 //--- Helpers ---
 namespace
@@ -280,7 +283,7 @@ int main(int, char**)
 
 	// Create scenes based on active renderer.
 #if defined(SOFTWARE_PATH_TRACER)
-	context.scene_manager->CreateScene<InstanceScene>();
+	context.scene_manager->CreateScene<BasicScene>();
 #elif defined(SOFTWARE_RASTERIZER)
 #elif defined(HARDWARE_RASTERIZER)
 #endif
