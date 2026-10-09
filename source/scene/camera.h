@@ -6,11 +6,6 @@
 #ifndef CAMERA_HEADER
 #define CAMERA_HEADER
 
-//--- Standard Includes ---
-#include <cassert>
-#include <numbers>
-#include <iostream>
-
 //--- Framework Includes ---
 #include <matrix.h>
 #include <vector3.h>
@@ -35,7 +30,7 @@ namespace gfx
 
 	public:
 		//--- Constructors & Destructor ---
-		Camera
+		explicit Camera
 		(const Vector3& position = Vector3::Zero(), const float fov_angle = 60.f)
 			: position_(position, 1.f)
 			, fov_angle_(fov_angle) { UpdateView(); }
@@ -74,7 +69,8 @@ namespace gfx
 
 		void Pitch(const float angle)
 		{
-			const Matrix rotation = Matrix::CreateRotationAxis(right_, angle);
+			const Matrix rotation = Matrix::CreateRotationAxis
+				(Vector3 {right_}, angle);
 			forward_ = rotation.TransformVector(forward_);
 			up_ = rotation.TransformVector(up_);
 			UpdateView();
@@ -126,9 +122,15 @@ namespace gfx
 		void UpdateView()
 		{
 			forward_ = forward_.Normalized();
-			right_ = Vector3::Cross(Vector4::UnitY(), forward_).Normalized();
-			up_ = Vector3::Cross(forward_, right_).Normalized();
-			view_ = Matrix::CreateLookAtLh(position_, forward_, up_, right_);
+			right_ = Vector4::Cross(Vector4::UnitY(), forward_).Normalized();
+			up_ = Vector4::Cross(forward_, right_).Normalized();
+			view_ = Matrix::CreateLookAtLh
+			(
+				Vector3 {position_},
+				Vector3 {forward_},
+				Vector3 {up_},
+				Vector3 {right_}
+			);
 		}
 	};
 }

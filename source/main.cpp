@@ -51,7 +51,7 @@ namespace
 		std::chrono::high_resolution_clock::time_point frame_start_ = {};
 
 	public:
-		FrameLimiter(const double target_fps)
+		explicit FrameLimiter(const double target_fps)
 			: target_ms_(1000.0 / target_fps)
 			, frame_start_(std::chrono::high_resolution_clock::now())
 		{
@@ -286,9 +286,9 @@ int main(int, char**)
 	key_bindings.push_back
 	(
 		{
-			SDL_SCANCODE_F12,
-			"F12: Save Screenshot",
-			[&surface, &window, &context]()
+			.key = SDL_SCANCODE_F12,
+			.description = "F12: Save Screenshot",
+			.action = [&surface, &window, &context]
 			{
 				SaveScreenshot(surface, window.get(), *context.logger);
 			}

@@ -273,8 +273,8 @@ const Matrix& Matrix::Inverse()
 			if (row != col)
 			{
 				const float factor = augmented[row][col];
-				for (uint8_t j = 0; j < 8; j++)
-					augmented[row][j] -= factor * augmented[col][j];
+				for (uint8_t j = 0; j < 8; j++) augmented[row][j] -= factor * augmented[
+					col][j];
 			}
 		}
 	}
@@ -321,9 +321,8 @@ const Matrix& Matrix::GetInverse() const
 		{
 			auto inverse = std::make_unique<Matrix>(*this);
 			const float det {inverse->Determinant()};
-			if (std::abs
-				(det) < std::numeric_limits<float>::epsilon()) *inverse =
-				CreateIdentity();
+			if (std::abs(det) < std::numeric_limits<float>::epsilon())
+				*inverse = CreateIdentity();
 			else inverse->Inverse();
 			cached_inverse = std::move(inverse);
 			inverse_computed.store(true, std::memory_order_release);
@@ -388,13 +387,13 @@ Matrix Matrix::CreatePerspectiveFovLH
 }
 
 
-Vector3 Matrix::GetAxisX() const { return data[0]; }
+Vector3 Matrix::GetAxisX() const { return Vector3 {data[0]}; }
 
-Vector3 Matrix::GetAxisY() const { return data[1]; }
+Vector3 Matrix::GetAxisY() const { return Vector3 {data[1]}; }
 
-Vector3 Matrix::GetAxisZ() const { return data[2]; }
+Vector3 Matrix::GetAxisZ() const { return Vector3 {data[2]}; }
 
-Vector3 Matrix::GetTranslation() const { return data[3]; }
+Vector3 Matrix::GetTranslation() const { return Vector3 {data[3]}; }
 
 Vector3 Matrix::GetScale() const
 {

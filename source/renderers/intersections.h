@@ -15,8 +15,7 @@
 namespace gfx
 {
 	//--- Intersection Tests ---
-	[[maybe_unused]]
-	static bool HitTestSphere
+	[[maybe_unused]] static bool HitTestSphere
 	(
 		const Sphere& sphere,
 		const Ray& ray,
@@ -24,19 +23,19 @@ namespace gfx
 		const bool ignore_hit_record = false
 	)
 	{
-		const Vector3 origin_difference{sphere.origin - ray.origin};
-		const float projection_size{Vector3::Dot(origin_difference, ray.direction)};
-		const float rejection_size
-		{
+		const Vector3 origin_difference {sphere.origin - ray.origin};
+		const float projection_size {
+			Vector3::Dot(origin_difference, ray.direction)
+		};
+		const float rejection_size {
 			Vector3::Reject(origin_difference, ray.direction).Magnitude()
 		};
 		// r == reject for tangential hit
 		if (sphere.radius <= rejection_size) return false;
-		const float projection_distance_difference
-		{
-			std::sqrtf(std::pow(sphere.radius, 2) - std::pow(rejection_size, 2))
+		const float projection_distance_difference {
+			std::sqrtf(std::powf(sphere.radius, 2) - std::powf(rejection_size, 2))
 		};
-		const float t{projection_size - projection_distance_difference};
+		const float t {projection_size - projection_distance_difference};
 		if (ray.min > t || t > ray.max) return false;
 		if (ignore_hit_record) return true;
 		hit_record.ray = ray;
@@ -44,8 +43,7 @@ namespace gfx
 		return true;
 	}
 
-	[[maybe_unused]]
-	static bool HitTestPlane
+	[[maybe_unused]] static bool HitTestPlane
 	(
 		const Plane& plane,
 		const Ray& ray,
@@ -53,8 +51,8 @@ namespace gfx
 		const bool ignore_hit_record = false
 	)
 	{
-		Vector3 normal{plane.normal};
-		float dn{Vector3::Dot(ray.direction, plane.normal)};
+		Vector3 normal {plane.normal};
+		float dn {Vector3::Dot(ray.direction, plane.normal)};
 
 		//flip double-sided plane if facing away
 		if (plane.double_sided && dn > 0.0f)
@@ -66,20 +64,19 @@ namespace gfx
 		//backface culling
 		if (dn >= 0.0f) return false;
 
-		const float t{Vector3::Dot(plane.origin - ray.origin, normal) / dn};
+		const float t {Vector3::Dot(plane.origin - ray.origin, normal) / dn};
 		if (ray.min > t || t > ray.max) return false;
 
 		if (plane.half_extent.has_value()) //finite plane
 		{
-			const Vector3 point{ray.origin + t * ray.direction};
-			const Vector3 p{plane.origin - point};
-			const float t_prime{Vector3::Dot(p, plane.tangent)};
-			const Vector3 b{Vector3::Cross(plane.normal, plane.tangent)};
-			const float b_prime{Vector3::Dot(p, b)};
-			const bool in_bounds
-			{
-				std::abs(t_prime) <= plane.half_extent.value().x &&
-				std::abs(b_prime) <= plane.half_extent.value().y
+			const Vector3 point {ray.origin + t * ray.direction};
+			const Vector3 p {plane.origin - point};
+			const float t_prime {Vector3::Dot(p, plane.tangent)};
+			const Vector3 b {Vector3::Cross(plane.normal, plane.tangent)};
+			const float b_prime {Vector3::Dot(p, b)};
+			const bool in_bounds {
+				std::abs(t_prime) <= plane.half_extent.value().x && std::abs
+				(b_prime) <= plane.half_extent.value().y
 			};
 			if (!in_bounds) return false;
 		}
@@ -89,8 +86,7 @@ namespace gfx
 		return true;
 	}
 
-	[[maybe_unused]]
-	static bool HitTestTriangle
+	[[maybe_unused]] static bool HitTestTriangle
 	(
 		const Triangle& triangle,
 		const Ray& ray,
@@ -98,32 +94,29 @@ namespace gfx
 		const bool ignore_hit_record = false
 	)
 	{
-		const auto dn{Vector3::Dot(ray.direction, triangle.normal)};
+		const auto dn {Vector3::Dot(ray.direction, triangle.normal)};
 
 		if (std::abs(dn) < 1e-4f) return false; //parallel
 
-		if
-		(
-			(triangle.cull_mode == CullMode::kBackFaceCulling && dn >= 0.f) ||
-			(triangle.cull_mode == CullMode::kFrontFaceCulling && dn <= 0.f)
-		)
-			return false;
+		if ((triangle.cull_mode == CullMode::kBackFaceCulling && dn >= 0.f) || (
+			triangle.cull_mode == CullMode::kFrontFaceCulling && dn <= 0.f)) return
+			false;
 
-		const auto edge1{triangle.v1 - triangle.v0};
-		const auto edge2{triangle.v2 - triangle.v0};
-		const auto h{Vector3::Cross(ray.direction, edge2)};
-		const auto det{Vector3::Dot(edge1, h)};
-		const auto inv_det{1.f / det};
+		const auto edge1 {triangle.v1 - triangle.v0};
+		const auto edge2 {triangle.v2 - triangle.v0};
+		const auto h {Vector3::Cross(ray.direction, edge2)};
+		const auto det {Vector3::Dot(edge1, h)};
+		const auto inv_det {1.f / det};
 
-		const auto s{ray.origin - triangle.v0};
-		const auto u{Vector3::Dot(s, h) * inv_det};
+		const auto s {ray.origin - triangle.v0};
+		const auto u {Vector3::Dot(s, h) * inv_det};
 		if (u < 0 || u > 1) return false;
 
-		const auto q{Vector3::Cross(s, edge1)};
-		const auto v{Vector3::Dot(ray.direction, q) * inv_det};
+		const auto q {Vector3::Cross(s, edge1)};
+		const auto v {Vector3::Dot(ray.direction, q) * inv_det};
 		if (v < 0 || (u + v) > 1) return false;
 
-		const auto t{Vector3::Dot(edge2, q) * inv_det};
+		const auto t {Vector3::Dot(edge2, q) * inv_det};
 		if (ray.min > t || t > ray.max) return false;
 
 		if (ignore_hit_record) return true;
@@ -141,29 +134,25 @@ namespace gfx
 		const bool ignore_hit_record = false
 	)
 	{
-		bool did_hit{false};
-		for (size_t i{0}; i < mesh.indices.size() - 2; i += 3)
+		bool did_hit {false};
+		for (size_t i {0}; i < mesh.indices.size() - 2; i += 3)
 		{
-			const auto index_v0{mesh.indices.at(i)};
-			const auto index_v1{mesh.indices.at(i + 1)};
-			const auto index_v2{mesh.indices.at(i + 2)};
-			const Triangle triangle
-			{
-				mesh.vertices.at(index_v0).position,
-				mesh.vertices.at(index_v1).position,
-				mesh.vertices.at(index_v2).position,
+			const auto index_v0 {mesh.indices.at(i)};
+			const auto index_v1 {mesh.indices.at(i + 1)};
+			const auto index_v2 {mesh.indices.at(i + 2)};
+			const Triangle triangle {
+				Vector3 {mesh.vertices.at(index_v0).position},
+				Vector3 {mesh.vertices.at(index_v1).position},
+				Vector3 {mesh.vertices.at(index_v2).position},
 				mesh.cull_mode
 			};
-			RayHitRecord hit_record
-			{
+			RayHitRecord hit_record {
 				.object_index = closest_hit_record.object_index,
 				.vertex_indices = {{index_v0, index_v1, index_v2}},
 			};
-			if
-			(
-				HitTestTriangle(triangle, ray, hit_record, ignore_hit_record) &&
-				(!did_hit || closest_hit_record.t > hit_record.t)
-			)
+			if (HitTestTriangle
+				(triangle, ray, hit_record, ignore_hit_record) && (!did_hit ||
+					closest_hit_record.t > hit_record.t))
 			{
 				did_hit = true;
 				closest_hit_record = hit_record;
@@ -172,8 +161,7 @@ namespace gfx
 		return did_hit;
 	}
 
-	[[maybe_unused]]
-	static bool HitTestAabb(const AABB& aabb, const Ray& ray)
+	[[maybe_unused]] static bool HitTestAabb(const AABB& aabb, const Ray& ray)
 	{
 		//TODO
 		assert(false && "Not Implemented");
@@ -182,8 +170,7 @@ namespace gfx
 		return false;
 	}
 
-	[[maybe_unused]]
-	static bool HitTestPrimitive
+	[[maybe_unused]] static bool HitTestPrimitive
 	(
 		const Primitive& primitive,
 		const Ray& ray,
@@ -195,26 +182,25 @@ namespace gfx
 		{
 		case PrimitiveType::kPlane:
 		{
-			const auto& plane{static_cast<const Plane&>(primitive)};
+			const auto& plane {dynamic_cast<const Plane&>(primitive)};
 			return HitTestPlane(plane, ray, hit_record, ignore_hit_record);
 		}
 		case PrimitiveType::kSphere:
 		{
-			const auto& sphere{static_cast<const Sphere&>(primitive)};
+			const auto& sphere {dynamic_cast<const Sphere&>(primitive)};
 			return HitTestSphere(sphere, ray, hit_record, ignore_hit_record);
 		}
 		case PrimitiveType::kTriangle:
 		{
-			const auto& triangle{static_cast<const Triangle&>(primitive)};
+			const auto& triangle {dynamic_cast<const Triangle&>(primitive)};
 			return HitTestTriangle(triangle, ray, hit_record, ignore_hit_record);
 		}
 		case PrimitiveType::kTriangleMesh:
 		{
-			const auto& mesh{static_cast<const TriangleMesh&>(primitive)};
+			const auto& mesh {dynamic_cast<const TriangleMesh&>(primitive)};
 			return HitTestMesh(mesh, ray, hit_record, ignore_hit_record);
 		}
-		default:
-			return false;
+		default: return false;
 		}
 	}
 }
