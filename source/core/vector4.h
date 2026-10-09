@@ -13,12 +13,13 @@ namespace gfx
 {
 	struct Vector2;
 	struct Vector3;
+
 	struct Vector4 final
 	{
-		float x{};
-		float y{};
-		float z{};
-		float w{};
+		float x {};
+		float y {};
+		float z {};
+		float w {};
 
 		//--- Constructors & Destructors ---
 		Vector4() = default;
@@ -41,28 +42,29 @@ namespace gfx
 		float Normalize();
 
 		static float Dot(const Vector4& v1, const Vector4& v2);
+		static Vector4 Cross(const Vector4& v1, const Vector4& v2);
 
 		//--- Operators ---
-		Vector4 operator*(const float scale) const;
-		Vector4 operator/(const float scale) const;
+		Vector4 operator*(float scale) const;
+		Vector4 operator/(float scale) const;
 		Vector4 operator+(const Vector4& v) const;
 		Vector4 operator-(const Vector4& v) const;
 		Vector4 operator-() const;
-		Vector4& operator*=(const float scale);
-		Vector4& operator/=(const float scale);
+		Vector4& operator*=(float scale);
+		Vector4& operator/=(float scale);
 		Vector4& operator+=(const Vector4& v);
 		Vector4& operator-=(const Vector4& v);
-		float& operator[](const uint8_t index);
-		float operator[](const uint8_t index) const;
+		float& operator[](uint8_t index);
+		float operator[](uint8_t index) const;
 		bool operator==(const Vector4& v) const;
 		bool operator!=(const Vector4& v) const;
 
 		//--- Common Values ---
-		static Vector4 UnitX() { return { 1, 0, 0, 0 }; }
-		static Vector4 UnitY() { return { 0, 1, 0, 0 }; }
-		static Vector4 UnitZ() { return { 0, 0, 1, 0 }; }
-		static Vector4 UnitW() { return { 0, 0, 0, 1 }; }
-		static Vector4 Zero() { return { 0, 0, 0, 0 }; }
+		static Vector4 UnitX() { return {1, 0, 0, 0}; }
+		static Vector4 UnitY() { return {0, 1, 0, 0}; }
+		static Vector4 UnitZ() { return {0, 0, 1, 0}; }
+		static Vector4 UnitW() { return {0, 0, 0, 1}; }
+		static Vector4 Zero() { return {0, 0, 0, 0}; }
 	};
 }
 #endif //VECTOR4_HEADER

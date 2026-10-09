@@ -15,12 +15,16 @@ using namespace gfx;
 #include <cstddef>
 
 Vector3::Vector3(const float _x, const float _y, const float _z)
-	: x(_x), y(_y), z(_z)
+	: x(_x)
+	, y(_y)
+	, z(_z)
 {
 }
 
 Vector3::Vector3(const Vector4& v)
-	: x(v.x), y(v.y), z(v.z)
+	: x(v.x)
+	, y(v.y)
+	, z(v.z)
 {
 }
 
@@ -32,8 +36,8 @@ Vector2& Vector3::AsVector2()
 {
 	static_assert
 	(
-		offsetof(Vector3, x) == offsetof(Vector2, x)
-		&& offsetof(Vector3, y) == offsetof(Vector2, y),
+		offsetof(Vector3, x) == offsetof(Vector2, x) && offsetof
+		(Vector3, y) == offsetof(Vector2, y),
 		"Layout mismatch between Vector3 and Vector2"
 	);
 	return reinterpret_cast<Vector2&>(*this);
@@ -45,7 +49,7 @@ float Vector3::SqrMagnitude() const { return x * x + y * y + z * z; }
 
 float Vector3::Normalize()
 {
-	const float m{Magnitude()};
+	const float m {Magnitude()};
 	if (m > 0.f)
 	{
 		x /= m;
@@ -57,7 +61,7 @@ float Vector3::Normalize()
 
 Vector3 Vector3::Normalized() const
 {
-	const float m{Magnitude()};
+	const float m {Magnitude()};
 	if (m > 0.f) return {x / m, y / m, z / m};
 	return {};
 }
@@ -69,22 +73,13 @@ float Vector3::Dot(const Vector3& v1, const Vector3& v2)
 
 Vector3 Vector3::Cross(const Vector3& v1, const Vector3& v2)
 {
-	return Vector3{
+	return Vector3 {
 		v1.y * v2.z - v1.z * v2.y,
 		v1.z * v2.x - v1.x * v2.z,
 		v1.x * v2.y - v1.y * v2.x
 	};
 }
 
-Vector4 Vector3::Cross(const Vector4& v1, const Vector4& v2)
-{
-	return Vector4{
-		v1.y * v2.z - v1.z * v2.y,
-		v1.z * v2.x - v1.x * v2.z,
-		v1.x * v2.y - v1.y * v2.x,
-		0.f
-	};
-}
 
 Vector3 Vector3::Project(const Vector3& v1, const Vector3& v2)
 {
@@ -104,29 +99,21 @@ Vector3 Vector3::Reflect(const Vector3& v1, const Vector3& v2)
 Vector3 Vector3::Refract
 (const Vector3& incident, const Vector3& normal, const float eta)
 {
-	const float cos_i{std::clamp(Dot(-incident, normal), -1.f, 1.f)};
-	const float sin2_t{eta * eta * (1.f - cos_i * cos_i)};
+	const float cos_i {std::clamp(Dot(-incident, normal), -1.f, 1.f)};
+	const float sin2_t {eta * eta * (1.f - cos_i * cos_i)};
 	if (sin2_t > 1.f) return {}; // total internal reflection
-	const float cos_t{std::sqrt(1.f - sin2_t)};
+	const float cos_t {std::sqrt(1.f - sin2_t)};
 	return incident * eta + normal * (eta * cos_i - cos_t);
 }
 
 Vector3 Vector3::Max(const Vector3& v1, const Vector3& v2)
 {
-	return {
-		std::max(v1.x, v2.x),
-		std::max(v1.y, v2.y),
-		std::max(v1.z, v2.z)
-	};
+	return {std::max(v1.x, v2.x), std::max(v1.y, v2.y), std::max(v1.z, v2.z)};
 }
 
 Vector3 Vector3::Min(const Vector3& v1, const Vector3& v2)
 {
-	return {
-		std::min(v1.x, v2.x),
-		std::min(v1.y, v2.y),
-		std::min(v1.z, v2.z)
-	};
+	return {std::min(v1.x, v2.x), std::min(v1.y, v2.y), std::min(v1.z, v2.z)};
 }
 
 #pragma region Operator Overloads
@@ -206,8 +193,8 @@ bool Vector3::operator==(const Vector3& v) const
 {
 	auto eq = [](const float x, const float y)
 	{
-		const float diff{std::fabs(x - y)};
-		const float scale{std::max({1.0f, std::fabs(x), std::fabs(y)})};
+		const float diff {std::fabs(x - y)};
+		const float scale {std::max({1.0f, std::fabs(x), std::fabs(y)})};
 		return diff <= std::numeric_limits<float>::epsilon() * scale;
 	};
 	return eq(x, v.x) && eq(y, v.y) && eq(z, v.z);

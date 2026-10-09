@@ -17,14 +17,14 @@ namespace gfx
 
 	struct Vector3 final
 	{
-		float x{};
-		float y{};
-		float z{};
+		float x {};
+		float y {};
+		float z {};
 
 		//--- Constructors & Destructors ---
 		Vector3() = default;
 		Vector3(float _x, float _y, float _z);
-		Vector3(const Vector4& v);
+		explicit Vector3(const Vector4& v);
 		~Vector3() = default;
 		Vector3(const Vector3&) = default;
 		Vector3& operator=(const Vector3&) = default;
@@ -44,16 +44,11 @@ namespace gfx
 
 		static float Dot(const Vector3& v1, const Vector3& v2);
 		static Vector3 Cross(const Vector3& v1, const Vector3& v2);
-		static Vector4 Cross(const Vector4& v1, const Vector4& v2);
 		static Vector3 Project(const Vector3& v1, const Vector3& v2);
 		static Vector3 Reject(const Vector3& v1, const Vector3& v2);
 		static Vector3 Reflect(const Vector3& v1, const Vector3& v2);
 		static Vector3 Refract
-		(
-			const Vector3& incident,
-			const Vector3& normal,
-			float eta
-		);
+		(const Vector3& incident, const Vector3& normal, float eta);
 
 		static Vector3 Max(const Vector3& v1, const Vector3& v2);
 		static Vector3 Min(const Vector3& v1, const Vector3& v2);
