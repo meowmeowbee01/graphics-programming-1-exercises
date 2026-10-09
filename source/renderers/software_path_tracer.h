@@ -50,6 +50,12 @@ namespace gfx
 			RayHitRecord& closest_hit_record
 		) const;
 
+		ShadingInput ConstructShadingInput
+		(
+			const Ray& ray,
+			RayHitRecord hit_record
+		) const;
+
 		static Vector3 GetNormal
 		(
 			const Primitive& primitive,
