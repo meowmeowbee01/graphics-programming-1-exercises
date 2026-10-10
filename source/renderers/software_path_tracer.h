@@ -30,54 +30,36 @@ namespace gfx
 		void Render() override;
 
 	private:
-		void RenderPixel
-		(
-			uint32_t screen_x,
-			uint32_t screen_y
+		void RenderPixel(uint32_t screen_x, uint32_t screen_y) const;
+
+		[[nodiscard]] Ray GetRay(
+		  uint32_t screen_x,
+		  uint32_t screen_y,
+		  uint32_t screen_width,
+		  uint32_t screen_height
 		) const;
 
-		Ray GetRay
-		(
-			uint32_t screen_x,
-			uint32_t screen_y,
-			uint32_t screen_width,
-			uint32_t screen_height
-		) const;
+		bool HitTest(const Ray& ray, RayHitRecord& closest_hit_record) const;
 
-		bool HitTest
-		(
-			const Ray& ray,
-			RayHitRecord& closest_hit_record
-		) const;
+		[[nodiscard]] ShadingInput
+		ConstructShadingInput(const Ray& ray, RayHitRecord hit_record) const;
 
-		ShadingInput ConstructShadingInput
-		(
-			const Ray& ray,
-			RayHitRecord hit_record
-		) const;
-
-		static Vector3 GetNormal
-		(
-			const Primitive& primitive,
-			const Vector3& point,
-			const std::optional<std::array<uint32_t, 3>>& vertex_indices,
-			std::optional<Vector2> barycentric_coordinates
+		static Vector3 GetNormal(
+		  const Primitive& primitive,
+		  const Vector3& point,
+		  const std::optional<std::array<uint32_t, 3>>& vertex_indices,
+		  std::optional<Vector2> barycentric_coordinates
 		);
 
-		void Visualize
-		(
-			uint32_t screen_x,
-			uint32_t screen_y,
-			const RayHitRecord& hit_record,
-			const ShadingInput& shading_input
+		void Visualize(
+		  uint32_t screen_x,
+		  uint32_t screen_y,
+		  const RayHitRecord& hit_record,
+		  const ShadingInput& shading_input
 		) const;
 
-		void WriteColor
-		(
-			uint32_t screen_x,
-			uint32_t screen_y,
-			ColorRgba color
-		) const;
+		void
+		WriteColor(uint32_t screen_x, uint32_t screen_y, ColorRgba color) const;
 	};
-}
+} //namespace gfx
 #endif //SOFTWARE_PATH_TRACER_HEADER

@@ -15,25 +15,24 @@
 namespace gfx
 {
 	//--- Intersection Tests ---
-	[[maybe_unused]] static bool HitTestSphere
-	(
-		const Sphere& sphere,
-		const Ray& ray,
-		RayHitRecord& hit_record,
-		const bool ignore_hit_record = false
+	[[maybe_unused]] static bool HitTestSphere(
+	  const Sphere& sphere,
+	  const Ray& ray,
+	  RayHitRecord& hit_record,
+	  const bool ignore_hit_record = false
 	)
 	{
 		const Vector3 origin_difference {sphere.origin - ray.origin};
 		const float projection_size {
-			Vector3::Dot(origin_difference, ray.direction)
+		  Vector3::Dot(origin_difference, ray.direction)
 		};
 		const float rejection_size {
-			Vector3::Reject(origin_difference, ray.direction).Magnitude()
+		  Vector3::Reject(origin_difference, ray.direction).Magnitude()
 		};
-		// r == reject for tangential hit
+		//r == reject for tangential hit
 		if (sphere.radius <= rejection_size) return false;
 		const float projection_distance_difference {
-			std::sqrtf(std::powf(sphere.radius, 2) - std::powf(rejection_size, 2))
+		  std::sqrtf(std::powf(sphere.radius, 2) - std::powf(rejection_size, 2))
 		};
 		const float t {projection_size - projection_distance_difference};
 		if (ray.min > t || t > ray.max) return false;
@@ -43,12 +42,11 @@ namespace gfx
 		return true;
 	}
 
-	[[maybe_unused]] static bool HitTestPlane
-	(
-		const Plane& plane,
-		const Ray& ray,
-		RayHitRecord& hit_record,
-		const bool ignore_hit_record = false
+	[[maybe_unused]] static bool HitTestPlane(
+	  const Plane& plane,
+	  const Ray& ray,
+	  RayHitRecord& hit_record,
+	  const bool ignore_hit_record = false
 	)
 	{
 		Vector3 normal {plane.normal};
@@ -75,8 +73,8 @@ namespace gfx
 			const Vector3 b {Vector3::Cross(plane.normal, plane.tangent)};
 			const float b_prime {Vector3::Dot(p, b)};
 			const bool in_bounds {
-				std::abs(t_prime) <= plane.half_extent.value().x && std::abs
-				(b_prime) <= plane.half_extent.value().y
+			  std::abs(t_prime) <= plane.half_extent.value().x &&
+			  std::abs(b_prime) <= plane.half_extent.value().y
 			};
 			if (!in_bounds) return false;
 		}
@@ -86,21 +84,22 @@ namespace gfx
 		return true;
 	}
 
-	[[maybe_unused]] static bool HitTestTriangle
-	(
-		const Triangle& triangle,
-		const Ray& ray,
-		RayHitRecord& hit_record,
-		const bool ignore_hit_record = false
+	[[maybe_unused]] static bool HitTestTriangle(
+	  const Triangle& triangle,
+	  const Ray& ray,
+	  RayHitRecord& hit_record,
+	  const bool ignore_hit_record = false
 	)
 	{
 		const auto dn {Vector3::Dot(ray.direction, triangle.normal)};
 
 		if (std::abs(dn) < 1e-4f) return false; //parallel
 
-		if ((triangle.cull_mode == CullMode::kBackFaceCulling && dn >= 0.f) || (
-			triangle.cull_mode == CullMode::kFrontFaceCulling && dn <= 0.f)) return
-			false;
+		if (
+		  (triangle.cull_mode == CullMode::kBackFaceCulling && dn >= 0.f) ||
+		  (triangle.cull_mode == CullMode::kFrontFaceCulling && dn <= 0.f)
+		)
+			return false;
 
 		const auto edge1 {triangle.v1 - triangle.v0};
 		const auto edge2 {triangle.v2 - triangle.v0};
@@ -126,12 +125,11 @@ namespace gfx
 		return true;
 	}
 
-	static bool HitTestMesh
-	(
-		const TriangleMesh& mesh,
-		const Ray& ray,
-		RayHitRecord& closest_hit_record,
-		const bool ignore_hit_record = false
+	static bool HitTestMesh(
+	  const TriangleMesh& mesh,
+	  const Ray& ray,
+	  RayHitRecord& closest_hit_record,
+	  const bool ignore_hit_record = false
 	)
 	{
 		bool did_hit {false};
@@ -141,18 +139,19 @@ namespace gfx
 			const auto index_v1 {mesh.indices.at(i + 1)};
 			const auto index_v2 {mesh.indices.at(i + 2)};
 			const Triangle triangle {
-				Vector3 {mesh.vertices.at(index_v0).position},
-				Vector3 {mesh.vertices.at(index_v1).position},
-				Vector3 {mesh.vertices.at(index_v2).position},
-				mesh.cull_mode
+			  Vector3 {mesh.vertices.at(index_v0).position},
+			  Vector3 {mesh.vertices.at(index_v1).position},
+			  Vector3 {mesh.vertices.at(index_v2).position},
+			  mesh.cull_mode
 			};
 			RayHitRecord hit_record {
-				.object_index = closest_hit_record.object_index,
-				.vertex_indices = {{index_v0, index_v1, index_v2}},
+			  .object_index = closest_hit_record.object_index,
+			  .vertex_indices = {{index_v0, index_v1, index_v2}},
 			};
-			if (HitTestTriangle
-				(triangle, ray, hit_record, ignore_hit_record) && (!did_hit ||
-					closest_hit_record.t > hit_record.t))
+			if (
+			  HitTestTriangle(triangle, ray, hit_record, ignore_hit_record) &&
+			  (!did_hit || closest_hit_record.t > hit_record.t)
+			)
 			{
 				did_hit = true;
 				closest_hit_record = hit_record;
@@ -170,12 +169,11 @@ namespace gfx
 		return false;
 	}
 
-	[[maybe_unused]] static bool HitTestPrimitive
-	(
-		const Primitive& primitive,
-		const Ray& ray,
-		RayHitRecord& hit_record,
-		const bool ignore_hit_record = false
+	[[maybe_unused]] static bool HitTestPrimitive(
+	  const Primitive& primitive,
+	  const Ray& ray,
+	  RayHitRecord& hit_record,
+	  const bool ignore_hit_record = false
 	)
 	{
 		switch (primitive.type)
@@ -203,5 +201,5 @@ namespace gfx
 		default: return false;
 		}
 	}
-}
+} //namespace gfx
 #endif //INTERSECTIONS_HEADER

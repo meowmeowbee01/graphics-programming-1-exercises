@@ -7,15 +7,15 @@
 #define LOGGER_HEADER
 
 //--- Standard includes ---
-#include <vector>
 #include <memory>
+#include <vector>
 
 //--- External includes ---
 // The spdlog library does not use the latest fmt library, which triggers
 // a compile error for 'formattable'. Disable this for now until patched!
 #ifdef _MSC_VER
 	#pragma warning(push)
-	#pragma warning(disable: 4459)
+	#pragma warning(disable : 4459)
 #elif defined(__GNUC__) || defined(__clang__)
 	#pragma GCC diagnostic push
 	#pragma GCC diagnostic ignored "-Wshadow"
@@ -29,7 +29,7 @@
 
 namespace gfx
 {
-	// Logger enums
+	//Logger enums
 	enum class LoggerMessageLevel : uint8_t
 	{
 		kTrace,
@@ -38,7 +38,7 @@ namespace gfx
 		kWarning,
 		kError,
 		kCritical,
-		kOff
+		kOff,
 	};
 
 	enum class LoggerType : uint8_t
@@ -50,38 +50,48 @@ namespace gfx
 
 	inline LoggerType operator&(const LoggerType& lhs, LoggerType rhs)
 	{
-		return static_cast<LoggerType>(static_cast<uint8_t>(lhs) & static_cast<uint8_t>(rhs));
+		return static_cast<LoggerType>(
+		  static_cast<uint8_t>(lhs) & static_cast<uint8_t>(rhs)
+		);
 	}
 
 	inline LoggerType operator|(const LoggerType lhs, LoggerType rhs)
 	{
-		return static_cast<LoggerType>(static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs));
+		return static_cast<LoggerType>(
+		  static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs)
+		);
 	}
 
 	inline void operator&=(LoggerType& lhs, LoggerType rhs)
 	{
-		lhs = static_cast<LoggerType>(static_cast<uint8_t>(lhs) & static_cast<uint8_t>(rhs));
+		lhs = static_cast<LoggerType>(
+		  static_cast<uint8_t>(lhs) & static_cast<uint8_t>(rhs)
+		);
 	}
 
 	inline void operator|=(LoggerType& lhs, LoggerType rhs)
 	{
-		lhs = static_cast<LoggerType>(static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs));
+		lhs = static_cast<LoggerType>(
+		  static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs)
+		);
 	}
 
-	// Logger
+	//Logger
 	class Logger final
 	{
 		//--- Data members ---
-		std::shared_ptr<spdlog::logger> logger_{ nullptr };
-		std::vector<spdlog::sink_ptr> sinks_{};
-		LoggerType enabled_logger_types_{ LoggerType::kConsole };
-		LoggerMessageLevel level_{ LoggerMessageLevel::kTrace };
-		const char* filename_{ "report.log" };
+		std::shared_ptr<spdlog::logger> logger_ {nullptr};
+		std::vector<spdlog::sink_ptr> sinks_ {};
+		LoggerType enabled_logger_types_ {LoggerType::kConsole};
+		LoggerMessageLevel level_ {LoggerMessageLevel::kTrace};
+		const char* filename_ {"report.log"};
 
 	public:
 		//--- Constructors & Destructor ---
-		Logger(const LoggerType enabled_logger_types = LoggerType::kConsole,
-			const LoggerMessageLevel enabled_level = LoggerMessageLevel::kTrace);
+		Logger(
+		  LoggerType enabled_logger_types = LoggerType::kConsole,
+		  LoggerMessageLevel enabled_level = LoggerMessageLevel::kTrace
+		);
 		~Logger();
 		Logger(const Logger&) = delete;
 		Logger& operator=(const Logger&) = delete;
@@ -90,43 +100,33 @@ namespace gfx
 
 		//--- Functions ---
 		[[nodiscard]] const char* GetReportFilename() const { return filename_; }
-		[[nodiscard]] bool IsLoggerTypeEnabled(LoggerType enabled_logger_type) const;
+
+		[[nodiscard]] bool
+		IsLoggerTypeEnabled(LoggerType enabled_logger_type) const;
 
 		template<typename... Args>
 		void LogTrace(const char* msg, Args&&... args) const
-		{
-			logger_->trace(fmt::runtime(msg), std::forward<Args>(args)...);
-		}
+		{ logger_->trace(fmt::runtime(msg), std::forward<Args>(args)...); }
 
 		template<typename... Args>
 		void LogDebug(const char* msg, Args&&... args) const
-		{
-			logger_->debug(fmt::runtime(msg), std::forward<Args>(args)...);
-		}
+		{ logger_->debug(fmt::runtime(msg), std::forward<Args>(args)...); }
 
 		template<typename... Args>
 		void LogInfo(const char* msg, Args&&... args) const
-		{
-			logger_->info(fmt::runtime(msg), std::forward<Args>(args)...);
-		}
+		{ logger_->info(fmt::runtime(msg), std::forward<Args>(args)...); }
 
 		template<typename... Args>
 		void LogWarning(const char* msg, Args&&... args) const
-		{
-			logger_->warn(fmt::runtime(msg), std::forward<Args>(args)...);
-		}
+		{ logger_->warn(fmt::runtime(msg), std::forward<Args>(args)...); }
 
 		template<typename... Args>
 		void LogError(const char* msg, Args&&... args) const
-		{
-			logger_->error(fmt::runtime(msg), std::forward<Args>(args)...);
-		}
+		{ logger_->error(fmt::runtime(msg), std::forward<Args>(args)...); }
 
 		template<typename... Args>
 		void LogCritical(const char* msg, Args&&... args) const
-		{
-			logger_->critical(fmt::runtime(msg), std::forward<Args>(args)...);
-		}
+		{ logger_->critical(fmt::runtime(msg), std::forward<Args>(args)...); }
 	};
-}
+} //namespace gfx
 #endif //LOGGER_HEADER

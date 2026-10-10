@@ -13,14 +13,15 @@ namespace gfx
 {
 	struct Vector3;
 	struct Vector4;
+
 	struct Vector2 final
 	{
-		float x{};
-		float y{};
+		float x {};
+		float y {};
 
 		//--- Constructors & Destructors ---
 		Vector2() = default;
-		Vector2(const float _x, const float _y);
+		Vector2(float _x, float _y);
 		Vector2(const Vector3& v);
 		Vector2(const Vector4& v);
 		~Vector2() = default;
@@ -43,33 +44,34 @@ namespace gfx
 
 		static Vector2 Max(const Vector2& v1, const Vector2& v2);
 		static Vector2 Min(const Vector2& v1, const Vector2& v2);
-		static Vector2 Clamp(const Vector2& v, const float min = 0.f, const float max = 1.f);
+		static Vector2
+		Clamp(const Vector2& v, float min = 0.f, float max = 1.f);
 
 		//--- Operators ---
-		Vector2 operator*(const float scale) const;
-		Vector2 operator/(const float scale) const;
+		Vector2 operator*(float scale) const;
+		Vector2 operator/(float scale) const;
 		Vector2 operator+(const Vector2& v) const;
 		Vector2 operator-(const Vector2& v) const;
 		Vector2 operator-() const;
 		Vector2& operator+=(const Vector2& v);
 		Vector2& operator-=(const Vector2& v);
-		Vector2& operator/=(const float scale);
-		Vector2& operator*=(const float scale);
-		float& operator[](const uint8_t index);
-		float operator[](const uint8_t index) const;
+		Vector2& operator/=(float scale);
+		Vector2& operator*=(float scale);
+		float& operator[](uint8_t index);
+		float operator[](uint8_t index) const;
 		bool operator==(const Vector2& v) const;
 		bool operator!=(const Vector2& v) const;
 
 		//--- Common Values ---
-		static Vector2 UnitX() { return { 1, 0 }; }
-		static Vector2 UnitY() { return { 0, 1 }; }
-		static Vector2 Zero() { return { 0, 0 }; }
+		static Vector2 UnitX() { return {1, 0}; }
+
+		static Vector2 UnitY() { return {0, 1}; }
+
+		static Vector2 Zero() { return {0, 0}; }
 	};
 
 	//Global Operators
 	inline Vector2 operator*(const float scale, const Vector2& v)
-	{
-		return { v.x * scale, v.y * scale };
-	}
-}
+	{ return {v.x * scale, v.y * scale}; }
+} //namespace gfx
 #endif //VECTOR2_HEADER

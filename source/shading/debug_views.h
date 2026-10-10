@@ -7,7 +7,6 @@
 #define DEBUG_VIEWS_HEADER
 
 //--- Standard Includes ---
-#include <cstdint>
 #include <functional>
 #include <limits>
 #include <string>
@@ -29,7 +28,7 @@ namespace gfx
 		kMetallicRoughness,
 		kDirectOnly,
 		kBounceCount,
-		kMax
+		kMax,
 	};
 
 	enum class FilterMode : uint8_t
@@ -37,7 +36,7 @@ namespace gfx
 		kPoint,
 		kLinear,
 		kAnisotropic,
-		kMax
+		kMax,
 	};
 
 	enum class SamplingStrategy : uint8_t
@@ -45,23 +44,23 @@ namespace gfx
 		kUniform,
 		kCosine,
 		kGGX,
-		kMax
+		kMax,
 	};
 
 	//--- Debug Parameters ---
 	struct DebugParams final
 	{
-		VisualizationMode visualization_mode{ VisualizationMode::kNone };
-		SamplingStrategy sampling_strategy{ SamplingStrategy::kGGX };
-		ToneMapOperator tone_map_operator{ ToneMapOperator::kACESHill };
-		FilterMode filter_mode{ FilterMode::kPoint };
-		uint32_t max_samples{ std::numeric_limits<uint32_t>::max() };
-		uint32_t accumulated_samples{ 0 };
-		bool sampling_paused{ false };
-		bool show_denoised{ false };
-		bool update_active_scene{ true };
-		bool print_timer{ false };
-		bool show_bounding_boxes{ false };
+		VisualizationMode visualization_mode {VisualizationMode::kNone};
+		SamplingStrategy sampling_strategy {SamplingStrategy::kGGX};
+		ToneMapOperator tone_map_operator {ToneMapOperator::kACESHill};
+		FilterMode filter_mode {FilterMode::kPoint};
+		uint32_t max_samples {std::numeric_limits<uint32_t>::max()};
+		uint32_t accumulated_samples {0};
+		bool sampling_paused {false};
+		bool show_denoised {false};
+		bool update_active_scene {true};
+		bool print_timer {false};
+		bool show_bounding_boxes {false};
 	};
 
 	//--- Key Bindings ---
@@ -72,35 +71,29 @@ namespace gfx
 		std::function<void()> action;
 	};
 
-	// Forward declarations for users
+	//Forward declarations for users
 	struct Context;
 	class Logger;
 	std::vector<KeyBinding> RegisterKeyBindings(Context& context);
-	void PrintKeyBindings(const std::vector<KeyBinding>& bindings, const Logger& logger);
+	void PrintKeyBindings(
+	  const std::vector<KeyBinding>& bindings,
+	  const Logger& logger
+	);
 
 	//--- String Conversion Helpers ---
 	inline std::string VisualizationModeToString(const VisualizationMode& mode)
 	{
 		switch (mode)
 		{
-		case VisualizationMode::kNone:
-			return "None";
-		case VisualizationMode::kNormals:
-			return "Normals";
-		case VisualizationMode::kAlbedo:
-			return "Albedo";
-		case VisualizationMode::kDepth:
-			return "Depth";
-		case VisualizationMode::kUV:
-			return "UV";
-		case VisualizationMode::kMetallicRoughness:
-			return "Metallic/Roughness";
-		case VisualizationMode::kDirectOnly:
-			return "Direct Only";
-		case VisualizationMode::kBounceCount:
-			return "Bounce Count";
-		case VisualizationMode::kMax:
-			return "";
+		case VisualizationMode::kNone: return "None";
+		case VisualizationMode::kNormals: return "Normals";
+		case VisualizationMode::kAlbedo: return "Albedo";
+		case VisualizationMode::kDepth: return "Depth";
+		case VisualizationMode::kUV: return "UV";
+		case VisualizationMode::kMetallicRoughness: return "Metallic/Roughness";
+		case VisualizationMode::kDirectOnly: return "Direct Only";
+		case VisualizationMode::kBounceCount: return "Bounce Count";
+		case VisualizationMode::kMax: return "";
 		}
 		return "";
 	}
@@ -109,14 +102,10 @@ namespace gfx
 	{
 		switch (strategy)
 		{
-		case SamplingStrategy::kUniform:
-			return "Uniform Hemisphere";
-		case SamplingStrategy::kCosine:
-			return "Cosine-Weighted Hemisphere";
-		case SamplingStrategy::kGGX:
-			return "GGX Importance Sampling";
-		case SamplingStrategy::kMax:
-			return "";
+		case SamplingStrategy::kUniform: return "Uniform Hemisphere";
+		case SamplingStrategy::kCosine: return "Cosine-Weighted Hemisphere";
+		case SamplingStrategy::kGGX: return "GGX Importance Sampling";
+		case SamplingStrategy::kMax: return "";
 		}
 		return "";
 	}
@@ -125,14 +114,10 @@ namespace gfx
 	{
 		switch (mode)
 		{
-		case FilterMode::kPoint:
-			return "Point";
-		case FilterMode::kLinear:
-			return "Linear";
-		case FilterMode::kAnisotropic:
-			return "Anisotropic";
-		case FilterMode::kMax:
-			return "";
+		case FilterMode::kPoint: return "Point";
+		case FilterMode::kLinear: return "Linear";
+		case FilterMode::kAnisotropic: return "Anisotropic";
+		case FilterMode::kMax: return "";
 		}
 		return "";
 	}
@@ -141,19 +126,14 @@ namespace gfx
 	{
 		switch (op)
 		{
-		case ToneMapOperator::kNone:
-			return "None";
-		case ToneMapOperator::kReinhard:
-			return "Reinhard";
-		case ToneMapOperator::kACESNarkowicz:
-			return "ACES (Narkowicz)";
-		case ToneMapOperator::kACESHill:
-			return "ACES (Hill)";
-		case ToneMapOperator::kMax:
-			return "";
+		case ToneMapOperator::kNone: return "None";
+		case ToneMapOperator::kReinhard: return "Reinhard";
+		case ToneMapOperator::kACESNarkowicz: return "ACES (Narkowicz)";
+		case ToneMapOperator::kACESHill: return "ACES (Hill)";
+		case ToneMapOperator::kMax: return "";
 		}
 		return "";
 	}
-}
+} //namespace gfx
 
 #endif //DEBUG_VIEWS_HEADER

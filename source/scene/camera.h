@@ -30,10 +30,12 @@ namespace gfx
 
 	public:
 		//--- Constructors & Destructor ---
-		explicit Camera
-		(const Vector3& position = Vector3::Zero(), const float fov_angle = 60.f)
-			: position_(position, 1.f)
-			, fov_angle_(fov_angle) { UpdateView(); }
+		explicit Camera(
+		  const Vector3& position = Vector3::Zero(),
+		  const float fov_angle = 60.f
+		)
+		  : position_(position, 1.f), fov_angle_(fov_angle)
+		{ UpdateView(); }
 
 		~Camera() = default;
 
@@ -69,8 +71,8 @@ namespace gfx
 
 		void Pitch(const float angle)
 		{
-			const Matrix rotation = Matrix::CreateRotationAxis
-				(Vector3 {right_}, angle);
+			const Matrix rotation =
+			  Matrix::CreateRotationAxis(Vector3 {right_}, angle);
 			forward_ = rotation.TransformVector(forward_);
 			up_ = rotation.TransformVector(up_);
 			UpdateView();
@@ -106,7 +108,7 @@ namespace gfx
 		const Vector4& GetForward() const { return forward_; }
 		float GetFovAngle() const { return fov_angle_; }
 
-		const Matrix& GetView() { return view_; }
+		const Matrix& GetView() const { return view_; }
 
 		const Matrix& GetProjection(const float fov_y, const float aspect_ratio)
 		{
@@ -124,14 +126,13 @@ namespace gfx
 			forward_ = forward_.Normalized();
 			right_ = Vector4::Cross(Vector4::UnitY(), forward_).Normalized();
 			up_ = Vector4::Cross(forward_, right_).Normalized();
-			view_ = Matrix::CreateLookAtLh
-			(
-				Vector3 {position_},
-				Vector3 {forward_},
-				Vector3 {up_},
-				Vector3 {right_}
+			view_ = Matrix::CreateLookAtLh(
+			  Vector3 {position_},
+			  Vector3 {forward_},
+			  Vector3 {up_},
+			  Vector3 {right_}
 			);
 		}
 	};
-}
+} //namespace gfx
 #endif //CAMERA_HEADER

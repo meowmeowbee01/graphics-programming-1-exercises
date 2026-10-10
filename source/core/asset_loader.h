@@ -21,19 +21,31 @@ namespace gfx
 	class AssetLoader final
 	{
 		//--- Data Members ---
-		std::unordered_map<std::string, uint32_t> loaded_textures_map_{};
+		std::unordered_map<std::string, uint32_t> loaded_textures_map_ {};
 
 		//--- Functions ---
-		uint32_t CreateTextureUnique(Scene& scene, const std::string& path, bool is_srgb = false);
-		uint32_t CreateMaterial(Scene& scene, const aiMaterial* ai_material,
-			const std::string& model_directory, bool auto_detect_alpha = false);
+		uint32_t CreateTextureUnique(
+		  Scene& scene,
+		  const std::string& path,
+		  bool is_srgb = false
+		);
+		uint32_t CreateMaterial(
+		  Scene& scene,
+		  const aiMaterial* ai_material,
+		  const std::string& model_directory,
+		  bool auto_detect_alpha = false
+		);
 
 	public:
 		//--- Functions ---
-		bool Load(const std::string& path, Scene& scene, bool use_instancing_transforms = false,
-			const uint32_t override_material_index = std::numeric_limits<uint32_t>::max(),
-			const bool convert_to_left_handed = true,
-			bool auto_detect_alpha = false);
+		bool Load(
+		  const std::string& path,
+		  Scene& scene,
+		  bool use_instancing_transforms = false,
+		  uint32_t override_material_index = std::numeric_limits<uint32_t>::max(),
+		  bool convert_to_left_handed = true,
+		  bool auto_detect_alpha = false
+		);
 	};
-}
+} //namespace gfx
 #endif //ASSET_LOADER_HEADER

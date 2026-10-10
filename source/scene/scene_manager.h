@@ -8,19 +8,19 @@
 
 //--- Framework Includes ---
 #include <camera.h>
-#include <primitives.h>
+#include <factory.h>
 #include <materials.h>
 #include <matrix.h>
+#include <primitives.h>
 #include <texture.h>
-#include <factory.h>
 
 namespace gfx
 {
 	struct SceneObject final
 	{
-		uint32_t primitive_index{ std::numeric_limits<uint32_t>::max() };
-		uint32_t material_index{ std::numeric_limits<uint32_t>::max() };
-		std::optional<Matrix> instance_transformation{ Matrix{} };
+		uint32_t primitive_index {std::numeric_limits<uint32_t>::max()};
+		uint32_t material_index {std::numeric_limits<uint32_t>::max()};
+		std::optional<Matrix> instance_transformation {Matrix {}};
 	};
 
 	struct EnvironmentMap final
@@ -33,15 +33,15 @@ namespace gfx
 
 	struct Scene
 	{
-		Factory<Primitive> primitives_factory { Factory<Primitive>() };
-		Factory<Material> materials_factory { Factory<Material>() };
-		Factory<Texture> textures_factory { Factory<Texture>() };
-		Factory<Light> lights_factory { Factory<Light>() };
-		std::vector<SceneObject> objects { };
-		Camera camera { };
-		ColorRgba background_color { ColorRgba::Black() };
-		std::optional<EnvironmentMap> environment_map { };
-		bool scene_changed { true };
+		Factory<Primitive> primitives_factory {Factory<Primitive>()};
+		Factory<Material> materials_factory {Factory<Material>()};
+		Factory<Texture> textures_factory {Factory<Texture>()};
+		Factory<Light> lights_factory {Factory<Light>()};
+		std::vector<SceneObject> objects {};
+		Camera camera {};
+		ColorRgba background_color {ColorRgba::Black()};
+		std::optional<EnvironmentMap> environment_map {};
+		bool scene_changed {true};
 
 		Scene() = default;
 		virtual ~Scene() = default;
@@ -50,44 +50,45 @@ namespace gfx
 		Scene(Scene&&) = delete;
 		Scene& operator=(Scene&&) = delete;
 		virtual void Setup() = 0;
+
 		virtual bool Update(const double delta_time)
 		{
-			(void)delta_time; return false;
+			(void)delta_time;
+			return false;
 		}
 
 		[[nodiscard]] uint32_t GetPrimitiveCount() const
-		{
-			return static_cast<uint32_t>(primitives_factory.GetAll().size());
-		}
+		{ return static_cast<uint32_t>(primitives_factory.GetAll().size()); }
 
 		[[nodiscard]] uint32_t GetTriangleCount() const
 		{
 			uint32_t count = 0;
 			for (const Primitive* p : primitives_factory.GetAll())
-			{
-				if (p->type == PrimitiveType::kTriangle)
-					++count;
+				if (p->type == PrimitiveType::kTriangle) ++count;
 				else if (p->type == PrimitiveType::kTriangleMesh)
 					count += static_cast<uint32_t>(
-						static_cast<const TriangleMesh*>(p)->indices.size() / 3);
-			}
+					  dynamic_cast<const TriangleMesh*>(p)->indices.size() / 3
+					);
 			return count;
 		}
 	};
 
 	class SceneManager final
 	{
-		std::vector<std::unique_ptr<Scene>> scenes_{};
-		uint32_t active_scene_index_{ std::numeric_limits<uint32_t>::max() };
+		std::vector<std::unique_ptr<Scene>> scenes_ {};
+		uint32_t active_scene_index_ {std::numeric_limits<uint32_t>::max()};
 
 	public:
 		template<typename SceneType>
 		bool CreateScene(const bool activate_scene = true)
 		{
-			static_assert(std::is_base_of_v<Scene, SceneType>, "Scene specialization given must derive from Scene");
+			static_assert(
+			  std::is_base_of_v<Scene, SceneType>,
+			  "Scene specialization given must derive from Scene"
+			);
 
 			scenes_.emplace_back(std::make_unique<SceneType>());
-			SceneType* scene = static_cast<SceneType*>(scenes_.back().get());
+			auto* scene = static_cast<SceneType*>(scenes_.back().get());
 			scene->Setup();
 			if (activate_scene)
 				active_scene_index_ = static_cast<uint32_t>(scenes_.size() - 1);
@@ -96,8 +97,7 @@ namespace gfx
 
 		bool ActivateScene(const uint32_t index)
 		{
-			if (index >= static_cast<uint32_t>(scenes_.size()))
-				return false;
+			if (index >= static_cast<uint32_t>(scenes_.size())) return false;
 			active_scene_index_ = index;
 			scenes_[active_scene_index_]->scene_changed = true;
 			return true;
@@ -105,33 +105,32 @@ namespace gfx
 
 		void BeginFrame()
 		{
-			if (active_scene_index_ >= static_cast<uint32_t>(scenes_.size()))
-				return;
+			if (active_scene_index_ >= static_cast<uint32_t>(scenes_.size())) return;
 
-			// Reset the dirty flag from the previous frame.
-			// Input and Update during this frame will set it again if needed.
+			//Reset the dirty flag from the previous frame.
+			//Input and Update during this frame will set it again if needed.
 			scenes_[active_scene_index_]->scene_changed = false;
 		}
 
-		void UpdateActiveScene(const double delta_time, const bool update_scene = true)
+		void
+		UpdateActiveScene(const double delta_time, const bool update_scene = true)
 		{
-			if (active_scene_index_ >= static_cast<uint32_t>(scenes_.size()))
-				return;
+			if (active_scene_index_ >= static_cast<uint32_t>(scenes_.size())) return;
 
 			Scene* scene = scenes_[active_scene_index_].get();
 
-			// Propagate component-level changes into scene_changed.
+			//Propagate component-level changes into scene_changed.
 			if (scene->camera.IsDirty())
 			{
 				scene->scene_changed = true;
 				scene->camera.ClearDirty();
 			}
 
-			// Update the active scene. If it returns true, scene data changed.
+			//Update the active scene. If it returns true, scene data changed.
 			if (update_scene && scene->Update(delta_time))
 				scene->scene_changed = true;
 
-			// Afterward pre-cache the inverse matrices.
+			//Afterward pre-cache the inverse matrices.
 			for (SceneObject& object : scene->objects)
 			{
 				if (object.instance_transformation.has_value())
@@ -153,7 +152,8 @@ namespace gfx
 		{
 			if (!scenes_.empty())
 			{
-				active_scene_index_ = (active_scene_index_ + 1) % static_cast<uint32_t>(scenes_.size());
+				active_scene_index_ =
+				  (active_scene_index_ + 1) % static_cast<uint32_t>(scenes_.size());
 				scenes_[active_scene_index_]->scene_changed = true;
 			}
 		}
@@ -162,11 +162,12 @@ namespace gfx
 		{
 			if (!scenes_.empty())
 			{
-				active_scene_index_ = (active_scene_index_ + static_cast<uint32_t>(scenes_.size()) - 1)
-					% static_cast<uint32_t>(scenes_.size());
+				active_scene_index_ =
+				  (active_scene_index_ + static_cast<uint32_t>(scenes_.size()) - 1) %
+				  static_cast<uint32_t>(scenes_.size());
 				scenes_[active_scene_index_]->scene_changed = true;
 			}
 		}
 	};
-}
+} //namespace gfx
 #endif //SCENE_MANAGER_HEADER
