@@ -20,7 +20,7 @@ namespace gfx
 	{
 	public:
 		//--- Construction / Destruction ---
-		HardwareRasterizer(Context* context);
+		explicit HardwareRasterizer(Context* context);
 		~HardwareRasterizer() override;
 
 		HardwareRasterizer(const HardwareRasterizer&) = delete;

@@ -28,7 +28,7 @@ namespace gfx
 
 	public:
 		//--- Constructors & Destructor ---
-		Factory(const uint64_t total_size_bytes = 2 * kMegaBytes)
+		explicit Factory(const uint64_t total_size_bytes = 2 * kMegaBytes)
 		  : pool_buffer_(total_size_bytes)
 		  , pool_(pool_buffer_.data(), pool_buffer_.size())
 		{
@@ -53,7 +53,7 @@ namespace gfx
 			void* memory {pool_.allocate(size, alignment)};
 			T* object = new (memory) T(std::forward<Args>(args)...);
 			objects_.push_back(object);
-			const size_t aligned_size {(size + alignment - 1) & ~(alignment - 1)};
+			const size_t aligned_size {size + alignment - 1 & ~(alignment - 1)};
 			allocated_bytes_ += aligned_size;
 			return static_cast<uint32_t>(objects_.size() - 1);
 		}
@@ -95,7 +95,7 @@ namespace gfx
 			for (BaseType* object : objects_)
 			{
 				//Check if object is within our pool buffer
-				const std::byte* obj_ptr {reinterpret_cast<const std::byte*>(object)};
+				const auto obj_ptr {reinterpret_cast<const std::byte*>(object)};
 				const std::byte* pool_start {pool_buffer_.data()};
 				const std::byte* pool_end {pool_start + pool_buffer_.size()};
 
@@ -121,7 +121,7 @@ namespace gfx
 				const uint64_t object_size {original_object->GetSize()};
 				const uint64_t object_alignment {original_object->GetAlignment()};
 				const uint64_t object_aligned_size {
-				  (object_size + object_alignment - 1) & ~(object_alignment - 1)
+				  object_size + object_alignment - 1 & ~(object_alignment - 1)
 				};
 				void* memory {
 				  cloned_factory->pool_.allocate(object_size, object_alignment)

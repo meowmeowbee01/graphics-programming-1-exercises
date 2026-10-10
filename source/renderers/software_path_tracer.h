@@ -18,7 +18,7 @@ namespace gfx
 	{
 	public:
 		//--- Construction / Destruction ---
-		SoftwarePathTracer(Context* context);
+		explicit SoftwarePathTracer(Context* context);
 		~SoftwarePathTracer() override;
 
 		SoftwarePathTracer(const SoftwarePathTracer&) = delete;

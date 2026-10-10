@@ -30,7 +30,7 @@ namespace gfx
 
 	public:
 		//--- Constructors & Destructor ---
-		Texture(const std::string& path, bool is_srgb = false);
+		explicit Texture(const std::string& path, bool is_srgb = false);
 		~Texture() = default;
 		Texture(const Texture&) = delete;
 		Texture& operator=(const Texture&) = delete;

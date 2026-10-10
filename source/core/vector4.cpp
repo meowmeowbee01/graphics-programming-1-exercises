@@ -14,7 +14,7 @@ using namespace gfx;
 #include <cmath>
 #include <cstddef>
 
-Vector4::Vector4(float _x, float _y, float _z, float _w)
+Vector4::Vector4(const float _x, const float _y, const float _z, const float _w)
 	: x(_x)
 	, y(_y)
 	, z(_z)
@@ -22,7 +22,7 @@ Vector4::Vector4(float _x, float _y, float _z, float _w)
 {
 }
 
-Vector4::Vector4(const Vector3& v, float _w)
+Vector4::Vector4(const Vector3& v, const float _w)
 	: x(v.x)
 	, y(v.y)
 	, z(v.z)

@@ -20,7 +20,7 @@ namespace gfx
 
 	public:
 		//--- Construction / Destruction ---
-		Renderer(Context* const context) : context_(context) {}
+		explicit Renderer(Context* const context) : context_(context) {}
 		virtual ~Renderer() = default;
 		Renderer(const Renderer&) = delete;
 		Renderer& operator=(const Renderer&) = delete;

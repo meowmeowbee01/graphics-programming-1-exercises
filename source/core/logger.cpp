@@ -25,7 +25,7 @@ Logger::Logger(
 	//We do this so we can enable/disable them at runtime without having to
 	//recreate the logger. Each sink is paired with its corresponding LoggerType
 	//bit flag.
-	LoggerType sink_types[] = {LoggerType::kConsole, LoggerType::kFile};
+	constexpr LoggerType sink_types[] = {LoggerType::kConsole, LoggerType::kFile};
 	sinks_.reserve(std::size(sink_types));
 	sinks_.emplace_back(
 	  std::make_shared<spdlog::sinks::stdout_color_sink_mt>()
@@ -52,5 +52,5 @@ Logger::~Logger()
 	sinks_.clear();
 }
 
-bool Logger::IsLoggerTypeEnabled(LoggerType enabled_logger_type) const
+bool Logger::IsLoggerTypeEnabled(const LoggerType enabled_logger_type) const
 { return (enabled_logger_type & enabled_logger_types_) == enabled_logger_type; }

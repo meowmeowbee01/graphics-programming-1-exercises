@@ -103,7 +103,7 @@ namespace gfx
 			return true;
 		}
 
-		void BeginFrame()
+		void BeginFrame() const
 		{
 			if (active_scene_index_ >= static_cast<uint32_t>(scenes_.size())) return;
 
@@ -112,8 +112,10 @@ namespace gfx
 			scenes_[active_scene_index_]->scene_changed = false;
 		}
 
-		void
-		UpdateActiveScene(const double delta_time, const bool update_scene = true)
+		void UpdateActiveScene(
+		  const double delta_time,
+		  const bool update_scene = true
+		) const
 		{
 			if (active_scene_index_ >= static_cast<uint32_t>(scenes_.size())) return;
 

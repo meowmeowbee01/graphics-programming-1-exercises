@@ -55,7 +55,7 @@ ColorRgba Texture::Sample(const Vector2& uv) const
 	return { r, g, b, a };
 }
 
-Vector3 Texture::SampleNormal(const Vector2& uv, bool gltf_encoding) const
+Vector3 Texture::SampleNormal(const Vector2& uv, const bool gltf_encoding) const
 {
 	// Calculate index of texel.
 	const Vector2 clamped_uv{ Vector2::Clamp(uv) };

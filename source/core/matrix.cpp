@@ -225,7 +225,7 @@ const Matrix& Matrix::Inverse()
 	{
 		for (uint8_t j = 4; j < 8; j++)
 		{
-			augmented[i][j] = (i == (j - 4)) ? 1.0f : 0.0f;
+			augmented[i][j] = i == j - 4 ? 1.0f : 0.0f;
 		}
 	}
 

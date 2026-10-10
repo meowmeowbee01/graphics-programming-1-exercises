@@ -22,8 +22,8 @@ namespace gfx
 		//--- Constructors & Destructors ---
 		Vector2() = default;
 		Vector2(float _x, float _y);
-		Vector2(const Vector3& v);
-		Vector2(const Vector4& v);
+		explicit Vector2(const Vector3& v);
+		explicit Vector2(const Vector4& v);
 		~Vector2() = default;
 		Vector2(const Vector2&) = default;
 		Vector2& operator=(const Vector2&) = default;

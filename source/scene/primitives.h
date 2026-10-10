@@ -115,7 +115,7 @@ namespace gfx
 		virtual void UpdateAABB() = 0;
 
 	protected:
-		Primitive(const PrimitiveType t) : type(t) { }
+		explicit Primitive(const PrimitiveType t) : type(t) { }
 
 		Primitive(const Primitive&) = default;
 		Primitive& operator=(const Primitive&) = default;
@@ -124,7 +124,7 @@ namespace gfx
 	};
 
 	//--- Ray Tracing Implicit Surfaces ---
-	struct Sphere final : public Primitive
+	struct Sphere final : Primitive
 	{
 		Vector3 origin {0.f, 0.f, 0.f};
 		float radius {1.f};
@@ -135,7 +135,7 @@ namespace gfx
 		  : Primitive(PrimitiveType::kSphere), origin(o), radius(r)
 		{ UpdateAABB(); }
 
-		Sphere(const float r)
+		explicit Sphere(const float r)
 		  : Primitive(PrimitiveType::kSphere), origin(), radius(r)
 		{ UpdateAABB(); }
 
@@ -153,7 +153,7 @@ namespace gfx
 		void UpdateAABB() override;
 	};
 
-	struct Plane final : public Primitive
+	struct Plane final : Primitive
 	{
 		Vector3 origin {0.f, 0.f, 0.f};
 		Vector3 normal {0.f, 1.f, 0.f};
@@ -176,7 +176,7 @@ namespace gfx
 		  , half_extent(extent)
 		{ BuildTangent(); }
 
-		Plane(const Vector3& n, const bool is_double_sided = true)
+		explicit Plane(const Vector3& n, const bool is_double_sided = true)
 		  : Primitive(PrimitiveType::kPlane)
 		  , origin()
 		  , normal(n)
@@ -262,7 +262,7 @@ namespace gfx
 
 	//Do not use triangle with mesh! Vertex struct defined above should be used in
 	//mesh!
-	struct Triangle final : public Primitive
+	struct Triangle final : Primitive
 	{
 		Vector3 v0 {0.f, 0.f, 0.f};
 		Vector3 v1 {0.f, 0.f, 0.f};
@@ -325,7 +325,7 @@ namespace gfx
 		kTriangleStrip,
 	};
 
-	struct TriangleMesh final : public Primitive
+	struct TriangleMesh final : Primitive
 	{
 		std::vector<Vertex> vertices {};
 		std::vector<uint32_t> indices {};

@@ -45,12 +45,10 @@ namespace gfx
 		};
 
 		//--- Constructors & Destructors ---
-		explicit ColorRgba(const float v) : r(v), g(v), b(v), a(1.f) { }
+		explicit ColorRgba(const float v) : r(v), g(v), b(v) { }
 
 		ColorRgba(const float r, const float g, const float b)
-		  : r(r), g(g), b(b), a(1.f)
-		{
-		}
+		  : r(r), g(g), b(b) { }
 
 		ColorRgba(const float r, const float g, const float b, const float a)
 		  : r(r), g(g), b(b), a(a)
@@ -58,7 +56,7 @@ namespace gfx
 		}
 
 		explicit ColorRgba(const std::array<const float, 3>& v)
-		  : r(v[0]), g(v[1]), b(v[2]), a(1.f)
+		  : r(v[0]), g(v[1]), b(v[2])
 		{
 		}
 
@@ -67,11 +65,12 @@ namespace gfx
 		{
 		}
 
-		explicit ColorRgba(const Vector2& v) : r(v[0]), g(v[1]), b(0.f), a(1.f) { }
+		explicit ColorRgba(const Vector2& v) : r(v[0]), g(v[1]) { }
 
-		explicit ColorRgba(const Vector3& v) : r(v[0]), g(v[1]), b(v[2]), a(1.f) { }
+		explicit ColorRgba(const Vector3& v) : r(v[0]), g(v[1]), b(v[2]) { }
 
-		explicit ColorRgba(const Vector4& v) : r(v[0]), g(v[1]), b(v[2]), a(v[3]) { }
+		explicit ColorRgba(const Vector4& v)
+		  : r(v[0]), g(v[1]), b(v[2]), a(v[3]) { }
 
 		ColorRgba() = default;
 		~ColorRgba() = default;
@@ -117,7 +116,7 @@ namespace gfx
 				constexpr float c {2.43f};
 				constexpr float d {0.59f};
 				constexpr float e {0.14f};
-				return std::clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.f, 1.f);
+				return std::clamp(x * (a * x + b) / (x * (c * x + d) + e), 0.f, 1.f);
 			};
 			return {aces(r), aces(g), aces(b), a};
 		}
@@ -163,13 +162,13 @@ namespace gfx
 		[[nodiscard]] ColorRgba ToLinear() const
 		{
 			const float linear_r {
-			  (r <= 0.04045f) ? r / 12.92f : std::pow((r + 0.055f) / 1.055f, 2.4f)
+			  r <= 0.04045f ? r / 12.92f : std::pow((r + 0.055f) / 1.055f, 2.4f)
 			};
 			const float linear_g {
-			  (g <= 0.04045f) ? g / 12.92f : std::pow((g + 0.055f) / 1.055f, 2.4f)
+			  g <= 0.04045f ? g / 12.92f : std::pow((g + 0.055f) / 1.055f, 2.4f)
 			};
 			const float linear_b {
-			  (b <= 0.04045f) ? b / 12.92f : std::pow((b + 0.055f) / 1.055f, 2.4f)
+			  b <= 0.04045f ? b / 12.92f : std::pow((b + 0.055f) / 1.055f, 2.4f)
 			};
 			return {linear_r, linear_g, linear_b, a};
 		}
@@ -177,15 +176,15 @@ namespace gfx
 		[[nodiscard]] ColorRgba ToSrgb() const
 		{
 			const float srgb_r {
-			  (r <= 0.0031308f) ? r * 12.92f
+			  r <= 0.0031308f ? r * 12.92f
 			                    : 1.055f * std::pow(r, 1.0f / 2.4f) - 0.055f
 			};
 			const float srgb_g {
-			  (g <= 0.0031308f) ? g * 12.92f
+			  g <= 0.0031308f ? g * 12.92f
 			                    : 1.055f * std::pow(g, 1.0f / 2.4f) - 0.055f
 			};
 			const float srgb_b {
-			  (b <= 0.0031308f) ? b * 12.92f
+			  b <= 0.0031308f ? b * 12.92f
 			                    : 1.055f * std::pow(b, 1.0f / 2.4f) - 0.055f
 			};
 			return {srgb_r, srgb_g, srgb_b, a};
@@ -296,7 +295,7 @@ namespace gfx
 		}
 
 		ColorRgba operator/(const float s) const
-		{ return (s != 0.0f) ? ColorRgba(r / s, g / s, b / s, a / s) : *this; }
+		{ return s != 0.0f ? ColorRgba(r / s, g / s, b / s, a / s) : *this; }
 
 		ColorRgba& operator*=(const ColorRgba& o)
 		{

@@ -65,7 +65,7 @@ float Vector2::Cross(const Vector4& v1, const Vector4& v2)
 
 Vector2 Vector2::Reflect(const Vector2& v1, const Vector2& v2)
 {
-	return v1 - (2.f * Vector2::Dot(v1, v2) * v2);
+	return v1 - 2.f * Dot(v1, v2) * v2;
 }
 
 Vector2 Vector2::Max(const Vector2& v1, const Vector2& v2)

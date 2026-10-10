@@ -16,7 +16,7 @@ namespace gfx
 		bindings.push_back(
 		  {.key = SDL_SCANCODE_F1,
 		   .description = "F1: Previous Scene",
-		   .action = [&context]()
+		   .action = [&context]
 		   {
 			   if (context.scene_manager)
 			   {
@@ -28,7 +28,7 @@ namespace gfx
 		bindings.push_back(
 		  {.key = SDL_SCANCODE_F2,
 		   .description = "F2: Next Scene",
-		   .action = [&context]()
+		   .action = [&context]
 		   {
 			   if (context.scene_manager)
 			   {
@@ -42,7 +42,7 @@ namespace gfx
 		bindings.push_back(
 		  {.key = SDL_SCANCODE_F3,
 		   .description = "F3: Previous Visualization Mode",
-		   .action = [&context]()
+		   .action = [&context]
 		   {
 			   using UType = std::underlying_type_t<VisualizationMode>;
 			   constexpr auto max = static_cast<UType>(VisualizationMode::kMax);
@@ -62,7 +62,7 @@ namespace gfx
 		bindings.push_back(
 		  {.key = SDL_SCANCODE_F4,
 		   .description = "F4: Next Visualization Mode",
-		   .action = [&context]()
+		   .action = [&context]
 		   {
 			   using UType = std::underlying_type_t<VisualizationMode>;
 			   context.debug_params.visualization_mode =
@@ -78,9 +78,9 @@ namespace gfx
 		   }}
 		);
 		bindings.push_back(
-		  {SDL_SCANCODE_F5,
-		   "F5: Cycle Sampling Strategy (Uniform / Cosine / GGX)",
-		   [&context]()
+		  {.key = SDL_SCANCODE_F5,
+		   .description = "F5: Cycle Sampling Strategy (Uniform / Cosine / GGX)",
+		   .action = [&context]
 		   {
 			   using UType = std::underlying_type_t<SamplingStrategy>;
 			   context.debug_params.sampling_strategy = static_cast<SamplingStrategy>(
@@ -94,9 +94,9 @@ namespace gfx
 		   }}
 		);
 		bindings.push_back(
-		  {SDL_SCANCODE_F6,
-		   "F6: Cycle Tone Mapper (None / Reinhard / ACES)",
-		   [&context]()
+		  {.key = SDL_SCANCODE_F6,
+		   .description = "F6: Cycle Tone Mapper (None / Reinhard / ACES)",
+		   .action = [&context]
 		   {
 			   using UType = std::underlying_type_t<ToneMapOperator>;
 			   context.debug_params.tone_map_operator = static_cast<ToneMapOperator>(
@@ -110,9 +110,9 @@ namespace gfx
 		   }}
 		);
 		bindings.push_back(
-		  {SDL_SCANCODE_F7,
-		   "F7: Pause/Resume Sampling",
-		   [&context]()
+		  {.key = SDL_SCANCODE_F7,
+		   .description = "F7: Pause/Resume Sampling",
+		   .action = [&context]
 		   {
 			   context.debug_params.sampling_paused =
 			     !context.debug_params.sampling_paused;
@@ -125,9 +125,9 @@ namespace gfx
 
 		//--- Rasterizer ---
 		bindings.push_back(
-		  {SDL_SCANCODE_F8,
-		   "F8: Cycle Cull Modes (All Triangle Primitives)",
-		   [&context]()
+		  {.key = SDL_SCANCODE_F8,
+		   .description = "F8: Cycle Cull Modes (All Triangle Primitives)",
+		   .action = [&context]
 		   {
 			   const Scene* active_scene = context.scene_manager
 			     ? context.scene_manager->GetActiveScene()
@@ -161,9 +161,9 @@ namespace gfx
 		   }}
 		);
 		bindings.push_back(
-		  {SDL_SCANCODE_F9,
-		   "F9: Cycle Filter Mode (Point / Linear / Anisotropic)",
-		   [&context]()
+		  {.key = SDL_SCANCODE_F9,
+		   .description = "F9: Cycle Filter Mode (Point / Linear / Anisotropic)",
+		   .action = [&context]
 		   {
 			   using UType = std::underlying_type_t<FilterMode>;
 			   context.debug_params.filter_mode = static_cast<FilterMode>(
@@ -179,9 +179,9 @@ namespace gfx
 
 		//--- Shared Utility ---
 		bindings.push_back(
-		  {SDL_SCANCODE_F10,
-		   "F10: Toggle Scene Updating",
-		   [&context]()
+		  {.key = SDL_SCANCODE_F10,
+		   .description = "F10: Toggle Scene Updating",
+		   .action = [&context]
 		   {
 			   context.debug_params.update_active_scene =
 			     !context.debug_params.update_active_scene;
@@ -192,9 +192,9 @@ namespace gfx
 		   }}
 		);
 		bindings.push_back(
-		  {SDL_SCANCODE_F11,
-		   "F11: Toggle Timer Info (every 2 seconds)",
-		   [&context]()
+		  {.key = SDL_SCANCODE_F11,
+		   .description = "F11: Toggle Timer Info (every 2 seconds)",
+		   .action = [&context]
 		   {
 			   context.debug_params.print_timer = !context.debug_params.print_timer;
 			   context.logger->LogInfo(
@@ -204,9 +204,9 @@ namespace gfx
 		   }}
 		);
 		bindings.push_back(
-		  {SDL_SCANCODE_P,
-		   "",
-		   [&context]()
+		  {.key = SDL_SCANCODE_P,
+		   .description = "",
+		   .action = [&context]
 		   {
 			   const Scene* active_scene = context.scene_manager
 			     ? context.scene_manager->GetActiveScene()

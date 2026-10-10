@@ -21,7 +21,7 @@ namespace gfx
 	//-------------------------------------------------------------------------
 	//BasicScene: 3 spheres on a floor plane with a single point light.
 	//-------------------------------------------------------------------------
-	struct BasicScene final : public Scene
+	struct BasicScene final : Scene
 	{
 		void Setup() override
 		{
@@ -88,7 +88,7 @@ namespace gfx
 	//-------------------------------------------------------------------------
 	//InstanceScene: 3x3 grid of spheres from a single primitive (instancing).
 	//-------------------------------------------------------------------------
-	struct InstanceScene final : public Scene
+	struct InstanceScene final : Scene
 	{
 		void Setup() override
 		{
@@ -132,7 +132,7 @@ namespace gfx
 	//-------------------------------------------------------------------------
 	//TriangleScene: 3 rotating triangles with different cull modes.
 	//-------------------------------------------------------------------------
-	struct TriangleScene final : public Scene
+	struct TriangleScene final : Scene
 	{
 		float rotation_angle {0.f};
 		uint32_t tri0 {0}, tri1 {0}, tri2 {0};
@@ -221,7 +221,7 @@ namespace gfx
 	//-------------------------------------------------------------------------
 	//BunnyScene: Cornell box with a bunny mesh.
 	//-------------------------------------------------------------------------
-	struct BunnyScene final : public Scene
+	struct BunnyScene final : Scene
 	{
 		float light_time {0.f};
 		uint32_t light_index {0};
@@ -262,7 +262,7 @@ namespace gfx
 			  false
 			);
 			objects.at(0).instance_transformation =
-			  Matrix::CreateRotationY(static_cast<float>(std::numbers::pi)) *
+			  Matrix::CreateRotationY(std::numbers::pi) *
 			  Matrix::CreateScale(2.f, 2.f, 2.f);
 
 			//Cornell box walls (bounded, single-sided)
@@ -340,7 +340,7 @@ namespace gfx
 	//Shared between path tracer and rasterizer. Enable ENABLE_HELMET_ROTATION
 	//for the rasterizer to show the model spinning (disabled by default for PT).
 	//-------------------------------------------------------------------------
-	struct DamagedHelmetScene final : public Scene
+	struct DamagedHelmetScene final : Scene
 	{
 		float rotation_angle {0.f};
 		bool rotating_model {false};
@@ -426,7 +426,7 @@ namespace gfx
 	//-------------------------------------------------------------------------
 	//CornellBoxScene: Cornell box with PBR material spheres.
 	//-------------------------------------------------------------------------
-	struct CornellBoxScene final : public Scene
+	struct CornellBoxScene final : Scene
 	{
 		void Setup() override
 		{
@@ -546,7 +546,7 @@ namespace gfx
 	//-------------------------------------------------------------------------
 	//PathTraceScene: Path tracing showcase with HDRI environment.
 	//-------------------------------------------------------------------------
-	struct PathTraceScene final : public Scene
+	struct PathTraceScene final : Scene
 	{
 		void Setup() override
 		{
@@ -670,7 +670,7 @@ namespace gfx
 	//DragonAttenuationScene: glTF dragon with transmission and volume
 	//attenuation, showcasing KHR_materials_volume/transmission extensions.
 	//-------------------------------------------------------------------------
-	struct DragonAttenuationScene final : public Scene
+	struct DragonAttenuationScene final : Scene
 	{
 		void Setup() override
 		{
@@ -720,7 +720,7 @@ namespace gfx
 	//ChessScene: "A Beautiful Game" glTF chess set with glass pawn tops.
 	//Uses KHR_materials_transmission for path-traced glass refraction.
 	//-------------------------------------------------------------------------
-	struct ChessScene final : public Scene
+	struct ChessScene final : Scene
 	{
 		void Setup() override
 		{
@@ -765,7 +765,7 @@ namespace gfx
 	//energy-conserving, each sphere should be indistinguishable from
 	//the background.
 	//-------------------------------------------------------------------------
-	struct WhiteFurnaceScene final : public Scene
+	struct WhiteFurnaceScene final : Scene
 	{
 		void Setup() override
 		{
@@ -826,7 +826,7 @@ namespace gfx
 	//NdcTriangleScene: Single triangle in NDC (no WVP transform needed).
 	//Used at step 2 (position only, colors ignored) and step 3 (rainbow).
 	//-------------------------------------------------------------------------
-	struct NdcTriangleScene final : public Scene
+	struct NdcTriangleScene final : Scene
 	{
 		void Setup() override
 		{
@@ -855,7 +855,7 @@ namespace gfx
 	//-------------------------------------------------------------------------
 	//WorldTriangleScene: Single triangle in world space (requires WVP).
 	//-------------------------------------------------------------------------
-	struct WorldTriangleScene final : public Scene
+	struct WorldTriangleScene final : Scene
 	{
 		void Setup() override
 		{
@@ -884,7 +884,7 @@ namespace gfx
 	//-------------------------------------------------------------------------
 	//ColorTriangleScene: Vertex-colored triangle (barycentric interpolation).
 	//-------------------------------------------------------------------------
-	struct ColorTriangleScene final : public Scene
+	struct ColorTriangleScene final : Scene
 	{
 		void Setup() override
 		{
@@ -946,7 +946,7 @@ namespace gfx
 	//Both produce the same visual result — the topology only changes how
 	//indices reference the shared vertex buffer.
 	//-------------------------------------------------------------------------
-	struct QuadScene final : public Scene
+	struct QuadScene final : Scene
 	{
 		void Setup() override
 		{
@@ -1064,7 +1064,7 @@ namespace gfx
 	//AlphaBlendModeTestScene: Khronos glTF alpha conformance test model.
 	//Showcases kMask (alpha cutout) and kBlend (alpha blend) modes.
 	//-------------------------------------------------------------------------
-	struct AlphaBlendModeTestScene final : public Scene
+	struct AlphaBlendModeTestScene final : Scene
 	{
 		void Setup() override
 		{

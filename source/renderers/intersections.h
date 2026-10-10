@@ -113,7 +113,7 @@ namespace gfx
 
 		const auto q {Vector3::Cross(s, edge1)};
 		const auto v {Vector3::Dot(ray.direction, q) * inv_det};
-		if (v < 0 || (u + v) > 1) return false;
+		if (v < 0 || u + v > 1) return false;
 
 		const auto t {Vector3::Dot(edge2, q) * inv_det};
 		if (ray.min > t || t > ray.max) return false;
@@ -183,22 +183,26 @@ namespace gfx
 			const auto& plane {dynamic_cast<const Plane&>(primitive)};
 			return HitTestPlane(plane, ray, hit_record, ignore_hit_record);
 		}
+		break;
 		case PrimitiveType::kSphere:
 		{
 			const auto& sphere {dynamic_cast<const Sphere&>(primitive)};
 			return HitTestSphere(sphere, ray, hit_record, ignore_hit_record);
 		}
+		break;
 		case PrimitiveType::kTriangle:
 		{
 			const auto& triangle {dynamic_cast<const Triangle&>(primitive)};
 			return HitTestTriangle(triangle, ray, hit_record, ignore_hit_record);
 		}
+		break;
 		case PrimitiveType::kTriangleMesh:
 		{
 			const auto& mesh {dynamic_cast<const TriangleMesh&>(primitive)};
 			return HitTestMesh(mesh, ray, hit_record, ignore_hit_record);
 		}
-		default: return false;
+		break;
+		default: return false; break;
 		}
 	}
 } //namespace gfx

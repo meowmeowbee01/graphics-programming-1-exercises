@@ -88,7 +88,7 @@ namespace gfx
 
 	public:
 		//--- Constructors & Destructor ---
-		Logger(
+		explicit Logger(
 		  LoggerType enabled_logger_types = LoggerType::kConsole,
 		  LoggerMessageLevel enabled_level = LoggerMessageLevel::kTrace
 		);

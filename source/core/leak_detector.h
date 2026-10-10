@@ -30,7 +30,7 @@ namespace gfx
 	{
 	public:
 		//--- Constructors & Destructor ---
-		LeakDetector(const char* write_to_file = "");
+		explicit LeakDetector(const char* write_to_file = "");
 		~LeakDetector() = default;
 		LeakDetector(const LeakDetector&) = default;
 		LeakDetector& operator=(const LeakDetector&) = default;

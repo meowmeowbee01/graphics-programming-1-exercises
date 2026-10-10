@@ -42,7 +42,7 @@ void SoftwareRasterizer::Render()
 			final_color.MaxToOne();
 
 			//Write to surface
-			surface_info.pixel_buffer[px + (py * surface_info.width)] = SDL_MapRGB(
+			surface_info.pixel_buffer[px + py * surface_info.width] = SDL_MapRGB(
 			  surface_info.pixel_format_details,
 			  nullptr,
 			  static_cast<uint8_t>(final_color.r * 255),

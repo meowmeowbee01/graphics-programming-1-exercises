@@ -18,7 +18,7 @@ namespace gfx
 	{
 	public:
 		//--- Construction / Destruction ---
-		SoftwareRasterizer(Context* context);
+		explicit SoftwareRasterizer(Context* context);
 		~SoftwareRasterizer() override;
 
 		SoftwareRasterizer(const SoftwareRasterizer&) = delete;
