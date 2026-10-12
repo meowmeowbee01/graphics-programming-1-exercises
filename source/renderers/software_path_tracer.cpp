@@ -25,10 +25,14 @@ void SoftwarePathTracer::Render()
 {
 	assert(context_ && "Context not available!");
 
-	const uint32_t screen_width {context_->surface_info.width};
-	const uint32_t screen_height {context_->surface_info.height};
-	for (uint32_t screen_x {0}; screen_x < screen_width; ++screen_x)
-		for (uint32_t screen_y {0}; screen_y < screen_height; ++screen_y)
+#pragma omp parallel for schedule(auto) default(none) collapse(2)
+	for (
+	  uint32_t screen_x = 0; screen_x < context_->surface_info.width; ++screen_x
+	)
+		for (
+		  uint32_t screen_y = 0; screen_y < context_->surface_info.height;
+		  ++screen_y
+		)
 			RenderPixel(screen_x, screen_y);
 }
 
@@ -88,10 +92,10 @@ Ray SoftwarePathTracer::GetRay(
 	      static_cast<float>(screen_height))) *
 	  fov
 	};
-	const auto& inv_matrix {camera.GetView()};
+	const auto& matrix {camera.GetView()};
 	const Vector3 ray_direction_view {ndc_x, ndc_y, 1.f};
 	const Vector3 ray_direction {
-	  inv_matrix.TransformVector(ray_direction_view).Normalized()
+	  matrix.TransformVector(ray_direction_view).Normalized()
 	};
 	const Vector3 origin {camera.GetPosition()};
 	return Ray {.origin = origin, .direction = ray_direction};

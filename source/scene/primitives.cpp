@@ -4,62 +4,89 @@
 //  Copyright (c) 2026 Matthieu Delaere. All rights reserved.
 //==============================================================
 #include <primitives.h>
+
+#include <cassert>
 using namespace gfx;
 
 //--- Primitives AABB Updates ---
-void Sphere::UpdateAABB()
+void Sphere::UpdateAabb()
 {
-	//TODO
+	const Aabb aabb {
+	  {origin.x - radius, origin.y - radius, origin.z - radius},
+	  {origin.x + radius, origin.y + radius, origin.z + radius}
+	};
+	bounding_box = aabb;
 }
 
-void Triangle::UpdateAABB()
+void Triangle::UpdateAabb()
 {
-	//TODO
+	const Aabb aabb {
+	  {std::min({v0.x, v1.x, v2.x}),
+	   std::min({v0.y, v1.y, v2.y}),
+	   std::min({v0.z, v1.z, v2.z})},
+	  {std::max({v0.x, v1.x, v2.x}),
+	   std::max({v0.y, v1.y, v2.y}),
+	   std::max({v0.z, v1.z, v2.z})}
+	};
+	bounding_box = aabb;
 }
 
-void TriangleMesh::UpdateAABB()
+void TriangleMesh::UpdateAabb()
 {
-	//TODO
+	assert(!vertices.empty());
+	Aabb aabb {
+	  vertices.at(0).position.AsVector3(),
+	  vertices.at(0).position.AsVector3()
+	};
+	for (const auto& vertex : vertices)
+		aabb.ExpandToInclude(Vector3 {vertex.position});
+	bounding_box = aabb;
 }
 
 //--- AABB ---
-void AABB::ExpandToInclude(const Vector3& point)
+void Aabb::ExpandToInclude(const Vector3& point)
 {
 	min = Vector3::Min(min, point);
 	max = Vector3::Max(max, point);
 }
 
-void AABB::ExpandToInclude(const AABB& other)
+void Aabb::ExpandToInclude(const Aabb& other)
 {
 	min = Vector3::Min(min, other.min);
 	max = Vector3::Max(max, other.max);
 }
 
-bool AABB::Contains(const Vector3& point) const
+bool Aabb::Contains(const Vector3& point) const
 {
-	return point.x >= min.x && point.x <= max.x &&
-		point.y >= min.y && point.y <= max.y &&
-		point.z >= min.z && point.z <= max.z;
+	return point.x >= min.x &&
+	  point.x <= max.x &&
+	  point.y >= min.y &&
+	  point.y <= max.y &&
+	  point.z >= min.z &&
+	  point.z <= max.z;
 }
 
-bool AABB::Overlaps(const AABB& other) const
+bool Aabb::Overlaps(const Aabb& other) const
 {
-	return min.x <= other.max.x && max.x >= other.min.x &&
-		min.y <= other.max.y && max.y >= other.min.y &&
-		min.z <= other.max.z && max.z >= other.min.z;
+	return min.x <= other.max.x &&
+	  max.x >= other.min.x &&
+	  min.y <= other.max.y &&
+	  max.y >= other.min.y &&
+	  min.z <= other.max.z &&
+	  max.z >= other.min.z;
 }
 
-Vector3 AABB::GetCenter() const
+Vector3 Aabb::GetCenter() const
 {
-	return { (min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f, (min.z + max.z) * 0.5f };
+	return {
+	  (min.x + max.x) * 0.5f,
+	  (min.y + max.y) * 0.5f,
+	  (min.z + max.z) * 0.5f
+	};
 }
 
-Vector3 AABB::GetSize() const
-{
-	return { max.x - min.x, max.y - min.y, max.z - min.z };
-}
+Vector3 Aabb::GetSize() const
+{ return {max.x - min.x, max.y - min.y, max.z - min.z}; }
 
-bool AABB::IsValid() const
-{
-	return min.x <= max.x && min.y <= max.y && min.z <= max.z;
-}
+bool Aabb::IsValid() const
+{ return min.x <= max.x && min.y <= max.y && min.z <= max.z; }

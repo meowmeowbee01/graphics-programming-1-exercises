@@ -49,7 +49,7 @@ namespace gfx
 	};
 
 	//--- General Supporting Primitives ---
-	struct AABB final
+	struct Aabb final
 	{
 		Vector3 min {
 		  std::numeric_limits<float>::max(),
@@ -62,17 +62,17 @@ namespace gfx
 		  std::numeric_limits<float>::lowest()
 		};
 
-		AABB() = default;
+		Aabb() = default;
 
-		AABB(const Vector3& min_point, const Vector3& max_point)
+		Aabb(const Vector3& min_point, const Vector3& max_point)
 		  : min(min_point), max(max_point)
 		{
 		}
 
 		void ExpandToInclude(const Vector3& point);
-		void ExpandToInclude(const AABB& other);
+		void ExpandToInclude(const Aabb& other);
 		[[nodiscard]] bool Contains(const Vector3& point) const;
-		[[nodiscard]] bool Overlaps(const AABB& other) const;
+		[[nodiscard]] bool Overlaps(const Aabb& other) const;
 		[[nodiscard]] Vector3 GetCenter() const;
 		[[nodiscard]] Vector3 GetSize() const;
 		[[nodiscard]] bool IsValid() const;
@@ -80,7 +80,7 @@ namespace gfx
 
 	struct BVHNode final
 	{
-		AABB bounds {};
+		Aabb bounds {};
 		uint32_t left_child {0};
 		uint32_t first_tri {0};
 		uint32_t tri_count {0};
@@ -101,7 +101,7 @@ namespace gfx
 	struct Primitive
 	{
 		PrimitiveType type {PrimitiveType::kNone};
-		std::optional<AABB> bounding_box {};
+		std::optional<Aabb> bounding_box {};
 
 		virtual ~Primitive() = default;
 		virtual Primitive* CloneIntoMemory(void* memory) const = 0;
@@ -112,7 +112,7 @@ namespace gfx
 
 		[[nodiscard]] virtual uint64_t GetSize() const = 0;
 		[[nodiscard]] virtual uint64_t GetAlignment() const = 0;
-		virtual void UpdateAABB() = 0;
+		virtual void UpdateAabb() = 0;
 
 	protected:
 		explicit Primitive(const PrimitiveType t) : type(t) { }
@@ -133,11 +133,11 @@ namespace gfx
 
 		Sphere(const Vector3& o, const float r)
 		  : Primitive(PrimitiveType::kSphere), origin(o), radius(r)
-		{ UpdateAABB(); }
+		{ UpdateAabb(); }
 
 		explicit Sphere(const float r)
 		  : Primitive(PrimitiveType::kSphere), origin(), radius(r)
-		{ UpdateAABB(); }
+		{ UpdateAabb(); }
 
 		Primitive* CloneIntoMemory(void* memory) const override
 		{ return new (memory) Sphere(*this); }
@@ -150,7 +150,7 @@ namespace gfx
 		[[nodiscard]] uint64_t GetAlignment() const override
 		{ return alignof(Sphere); }
 
-		void UpdateAABB() override;
+		void UpdateAabb() override;
 	};
 
 	struct Plane final : Primitive
@@ -194,7 +194,7 @@ namespace gfx
 		[[nodiscard]] uint64_t GetAlignment() const override
 		{ return alignof(Plane); }
 
-		void UpdateAABB() override { }
+		void UpdateAabb() override { }
 
 	private:
 		//Building an Orthonormal Basis (Duff et al., JCGT 2017).
@@ -285,7 +285,7 @@ namespace gfx
 		  , v2 {_v2}
 		  , normal {_normal.Normalized()}
 		  , cull_mode(mode)
-		{ UpdateAABB(); }
+		{ UpdateAabb(); }
 
 		Triangle(
 		  const Vector3& _v0,
@@ -302,7 +302,7 @@ namespace gfx
 			const Vector3 edgeV0V1 = v1 - v0;
 			const Vector3 edgeV0V2 = v2 - v0;
 			normal = Vector3::Cross(edgeV0V1, edgeV0V2).Normalized();
-			UpdateAABB();
+			UpdateAabb();
 		}
 
 		Primitive* CloneIntoMemory(void* memory) const override
@@ -316,7 +316,7 @@ namespace gfx
 		[[nodiscard]] uint64_t GetAlignment() const override
 		{ return alignof(Triangle); }
 
-		void UpdateAABB() override;
+		void UpdateAabb() override;
 	};
 
 	enum class PrimitiveTopology : uint8_t
@@ -350,7 +350,7 @@ namespace gfx
 		  , indices(indices)
 		  , cull_mode(mode)
 		  , primitive_topology(topology)
-		{ UpdateAABB(); }
+		{ UpdateAabb(); }
 
 		TriangleMesh(
 		  std::vector<Vertex>&& vertices,
@@ -363,7 +363,7 @@ namespace gfx
 		  , indices(std::move(indices))
 		  , cull_mode(mode)
 		  , primitive_topology(topology)
-		{ UpdateAABB(); }
+		{ UpdateAabb(); }
 
 		Primitive* CloneIntoMemory(void* memory) const override
 		{ return new (memory) TriangleMesh(*this); }
@@ -377,7 +377,7 @@ namespace gfx
 		[[nodiscard]] uint64_t GetAlignment() const override
 		{ return alignof(TriangleMesh); }
 
-		void UpdateAABB() override;
+		void UpdateAabb() override;
 	};
 } //namespace gfx
 

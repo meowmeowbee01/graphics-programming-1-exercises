@@ -15,6 +15,37 @@
 namespace gfx
 {
 	//--- Intersection Tests ---
+	[[maybe_unused]] static bool HitTestAabb(const Aabb& aabb, const Ray& ray)
+	{
+		//not divide by zero safe
+		float t_min = (aabb.min.x - ray.origin.x) / ray.direction.x;
+		float t_max = (aabb.max.x - ray.origin.x) / ray.direction.x;
+
+		if (t_min > t_max) std::swap(t_min, t_max);
+
+		float t_y_min = (aabb.min.y - ray.origin.y) / ray.direction.y;
+		float t_y_max = (aabb.max.y - ray.origin.y) / ray.direction.y;
+
+		if (t_y_min > t_y_max) std::swap(t_y_min, t_y_max);
+
+		if ((t_min > t_y_max) || (t_y_min > t_max)) return false;
+
+		if (t_y_min > t_min) t_min = t_y_min;
+		if (t_y_max < t_max) t_max = t_y_max;
+
+		float t_z_min = (aabb.min.z - ray.origin.z) / ray.direction.z;
+		float t_z_max = (aabb.max.z - ray.origin.z) / ray.direction.z;
+
+		if (t_z_min > t_z_max) std::swap(t_z_min, t_z_max);
+
+		if ((t_min > t_z_max) || (t_z_min > t_max)) return false;
+
+		if (t_z_min > t_min) t_min = t_z_min;
+		if (t_z_max < t_max) t_max = t_z_max;
+
+		return t_min > ray.min || t_max < ray.max;
+	}
+
 	[[maybe_unused]] static bool HitTestSphere(
 	  const Sphere& sphere,
 	  const Ray& ray,
@@ -22,6 +53,13 @@ namespace gfx
 	  const bool ignore_hit_record = false
 	)
 	{
+		//might be faster to not do this for spheres?
+		if (
+		  sphere.bounding_box.has_value() &&
+		  !HitTestAabb(sphere.bounding_box.value(), ray)
+		)
+			return false;
+
 		const Vector3 origin_difference {sphere.origin - ray.origin};
 		const float projection_size {
 		  Vector3::Dot(origin_difference, ray.direction)
@@ -91,6 +129,13 @@ namespace gfx
 	  const bool ignore_hit_record = false
 	)
 	{
+		//might be faster to not do this for triangles?
+		if (
+		  triangle.bounding_box.has_value() &&
+		  !HitTestAabb(triangle.bounding_box.value(), ray)
+		)
+			return false;
+
 		const auto dn {Vector3::Dot(ray.direction, triangle.normal)};
 
 		if (std::abs(dn) < 1e-4f) return false; //parallel
@@ -132,6 +177,12 @@ namespace gfx
 	  const bool ignore_hit_record = false
 	)
 	{
+		if (
+		  mesh.bounding_box.has_value() &&
+		  !HitTestAabb(mesh.bounding_box.value(), ray)
+		)
+			return false;
+
 		bool did_hit {false};
 		for (size_t i {0}; i < mesh.indices.size() - 2; i += 3)
 		{
@@ -158,15 +209,6 @@ namespace gfx
 			}
 		}
 		return did_hit;
-	}
-
-	[[maybe_unused]] static bool HitTestAabb(const AABB& aabb, const Ray& ray)
-	{
-		//TODO
-		assert(false && "Not Implemented");
-		(void)aabb;
-		(void)ray;
-		return false;
 	}
 
 	[[maybe_unused]] static bool HitTestPrimitive(

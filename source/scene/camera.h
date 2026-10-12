@@ -102,10 +102,13 @@ namespace gfx
 		}
 
 		bool IsDirty() const { return dirty_; }
+
 		void ClearDirty() { dirty_ = false; }
 
 		const Vector4& GetPosition() const { return position_; }
+
 		const Vector4& GetForward() const { return forward_; }
+
 		float GetFovAngle() const { return fov_angle_; }
 
 		const Matrix& GetView() const { return view_; }
@@ -123,7 +126,7 @@ namespace gfx
 	private:
 		void UpdateView()
 		{
-			forward_ = forward_.Normalized();
+			forward_.Normalize();
 			right_ = Vector4::Cross(Vector4::UnitY(), forward_).Normalized();
 			up_ = Vector4::Cross(forward_, right_).Normalized();
 			view_ = Matrix::CreateLookAtLh(
