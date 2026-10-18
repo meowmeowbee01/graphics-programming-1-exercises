@@ -78,14 +78,16 @@ namespace gfx
 		[[nodiscard]] bool IsValid() const;
 	};
 
-	struct BVHNode final
+	struct BvhNode final
 	{
 		Aabb bounds {};
 		uint32_t left_child {0};
 		uint32_t first_tri {0};
 		uint32_t tri_count {0};
 
-		[[nodiscard]] bool IsLeaf() const { return tri_count > 0; }
+		[[nodiscard]] bool IsLeaf() const { return left_child == 0; }
+
+		[[nodiscard]] bool IsTiny() const { return tri_count <= 4; }
 	};
 
 	//--- Base Primitive ---
@@ -333,7 +335,7 @@ namespace gfx
 		PrimitiveTopology primitive_topology {PrimitiveTopology::kTriangleList};
 
 		//BVH acceleration structure (built during UpdateAABB)
-		std::vector<BVHNode> bvh_nodes {};
+		std::vector<BvhNode> bvh_nodes {};
 		std::vector<uint32_t>
 		  bvh_tri_indices {}; //Reordered triangle indices into the BVH
 
@@ -377,6 +379,11 @@ namespace gfx
 		[[nodiscard]] uint64_t GetAlignment() const override
 		{ return alignof(TriangleMesh); }
 
+		void BuildBvh(
+		  const std::vector<Vector3>& triangle_centers,
+		  const std::vector<Aabb>& triangle_bounds,
+		  uint32_t parent_index
+		);
 		void UpdateAabb() override;
 	};
 } //namespace gfx

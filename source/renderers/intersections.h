@@ -11,6 +11,7 @@
 
 //--- Framework Includes ---
 #include <primitives.h>
+#include <stack>
 
 namespace gfx
 {
@@ -28,7 +29,7 @@ namespace gfx
 
 		if (t_y_min > t_y_max) std::swap(t_y_min, t_y_max);
 
-		if ((t_min > t_y_max) || (t_y_min > t_max)) return false;
+		if (t_min > t_y_max || t_y_min > t_max) return false;
 
 		if (t_y_min > t_min) t_min = t_y_min;
 		if (t_y_max < t_max) t_max = t_y_max;
@@ -38,12 +39,64 @@ namespace gfx
 
 		if (t_z_min > t_z_max) std::swap(t_z_min, t_z_max);
 
-		if ((t_min > t_z_max) || (t_z_min > t_max)) return false;
+		if (t_min > t_z_max || t_z_min > t_max) return false;
 
 		if (t_z_min > t_min) t_min = t_z_min;
 		if (t_z_max < t_max) t_max = t_z_max;
 
 		return t_min > ray.min || t_max < ray.max;
+	}
+
+	[[maybe_unused]] static bool
+	HitTestAabb(const Aabb& aabb, const Ray& ray, float& t)
+	{
+		//not divide by zero safe
+		float t_min = (aabb.min.x - ray.origin.x) / ray.direction.x;
+		float t_max = (aabb.max.x - ray.origin.x) / ray.direction.x;
+
+		if (t_min > t_max) std::swap(t_min, t_max);
+
+		float t_y_min = (aabb.min.y - ray.origin.y) / ray.direction.y;
+		float t_y_max = (aabb.max.y - ray.origin.y) / ray.direction.y;
+
+		if (t_y_min > t_y_max) std::swap(t_y_min, t_y_max);
+
+		if (t_min > t_y_max || t_y_min > t_max) return false;
+
+		if (t_y_min > t_min) t_min = t_y_min;
+		if (t_y_max < t_max) t_max = t_y_max;
+
+		float t_z_min = (aabb.min.z - ray.origin.z) / ray.direction.z;
+		float t_z_max = (aabb.max.z - ray.origin.z) / ray.direction.z;
+
+		if (t_z_min > t_z_max) std::swap(t_z_min, t_z_max);
+
+		if (t_min > t_z_max || t_z_min > t_max) return false;
+
+		if (t_z_min > t_min) t_min = t_z_min;
+		if (t_z_max < t_max) t_max = t_z_max;
+
+		if (t_min < ray.min && t_max > ray.max) return false;
+
+		t = t_min;
+		const auto p {ray.origin + t * ray.direction};
+		constexpr float thickness {3e-2f};
+		const bool close_to_x {
+		  std::min(std::abs(p.x - aabb.min.x), std::abs(p.x - aabb.max.x)) <
+		  thickness
+		};
+		const bool close_to_y {
+		  std::min(std::abs(p.y - aabb.min.y), std::abs(p.y - aabb.max.y)) <
+		  thickness
+		};
+		const bool close_to_z {
+		  std::min(std::abs(p.z - aabb.min.z), std::abs(p.z - aabb.max.z)) <
+		  thickness
+		};
+		return static_cast<int>(close_to_x) +
+		  static_cast<int>(close_to_y) +
+		  static_cast<int>(close_to_z) >
+		  1;
 	}
 
 	[[maybe_unused]] static bool HitTestSphere(
@@ -177,38 +230,137 @@ namespace gfx
 	  const bool ignore_hit_record = false
 	)
 	{
-		if (
-		  mesh.bounding_box.has_value() &&
-		  !HitTestAabb(mesh.bounding_box.value(), ray)
-		)
-			return false;
-
-		bool did_hit {false};
-		for (size_t i {0}; i < mesh.indices.size() - 2; i += 3)
+		assert(!mesh.bvh_nodes.empty() && "bvh not built");
+//#define BVH_VIZ_DEPTH 3
+#ifdef BVH_VIZ_DEPTH
+		std::vector<std::vector<BvhNode>> bvh_nodes {};
+		int depth {0};
+		bvh_nodes.emplace_back();
+		bvh_nodes.at(0).emplace_back(mesh.bvh_nodes.at(0));
+		while (depth < BVH_VIZ_DEPTH)
 		{
-			const auto index_v0 {mesh.indices.at(i)};
-			const auto index_v1 {mesh.indices.at(i + 1)};
-			const auto index_v2 {mesh.indices.at(i + 2)};
+			bvh_nodes.emplace_back();
+			for (const auto& bvh_node : bvh_nodes.at(depth))
+			{
+				if (!bvh_node.IsLeaf())
+				{
+					bvh_nodes.at(depth + 1).emplace_back(
+					  mesh.bvh_nodes.at(bvh_node.left_child)
+					);
+					bvh_nodes.at(depth + 1).emplace_back(
+					  mesh.bvh_nodes.at(bvh_node.left_child + 1)
+					);
+				}
+			}
+			++depth;
+		}
+	//#define BVH_VIZ_INDEX 0
+	#ifdef BVH_VIZ_INDEX
+		float t {std::numeric_limits<float>::max()};
+		if (HitTestAabb(bvh_nodes.at(depth).at(BVH_VIZ_INDEX).bounds, ray, t))
+		{
+			closest_hit_record.ray = ray;
+			closest_hit_record.t = t;
+			closest_hit_record.barycentric_coordinates = {{}};
+			closest_hit_record.vertex_indices = {{0, 0, 0}};
+		}
+		for (size_t i {0}; i < bvh_nodes.at(depth).at(BVH_VIZ_INDEX).tri_count; ++i)
+		{
+			const auto index_index {
+			  bvh_nodes.at(depth).at(BVH_VIZ_INDEX).first_tri + i
+			};
+			const auto triangle_index {mesh.bvh_tri_indices.at(index_index) * 3};
+			const auto vertex0_index {mesh.indices.at(triangle_index)};
+			const auto vertex1_index {mesh.indices.at(triangle_index + 1)};
+			const auto vertex2_index {mesh.indices.at(triangle_index + 2)};
+			const auto& v0 {mesh.vertices.at(vertex0_index)};
+			const auto& v1 {mesh.vertices.at(vertex1_index)};
+			const auto& v2 {mesh.vertices.at(vertex2_index)};
 			const Triangle triangle {
-			  Vector3 {mesh.vertices.at(index_v0).position},
-			  Vector3 {mesh.vertices.at(index_v1).position},
-			  Vector3 {mesh.vertices.at(index_v2).position},
+			  Vector3 {v0.position},
+			  Vector3 {v1.position},
+			  Vector3 {v2.position},
 			  mesh.cull_mode
 			};
 			RayHitRecord hit_record {
 			  .object_index = closest_hit_record.object_index,
-			  .vertex_indices = {{index_v0, index_v1, index_v2}},
+			  .vertex_indices = {{vertex0_index, vertex1_index, vertex2_index}}
 			};
 			if (
 			  HitTestTriangle(triangle, ray, hit_record, ignore_hit_record) &&
-			  (!did_hit || closest_hit_record.t > hit_record.t)
+			  closest_hit_record.t > hit_record.t
 			)
 			{
-				did_hit = true;
 				closest_hit_record = hit_record;
 			}
 		}
-		return did_hit;
+		return closest_hit_record.t < std::numeric_limits<float>::max();
+	#else
+		for (size_t i {0}; i < bvh_nodes.at(depth).size(); ++i)
+		{
+			const auto& bvh_node {bvh_nodes.at(depth).at(i)};
+			float t {};
+			if (!HitTestAabb(bvh_node.bounds, ray, t)) continue;
+			if (closest_hit_record.t < t) continue;
+			if (t < 0) continue;
+			closest_hit_record.object_index = i;
+			closest_hit_record.ray = ray;
+			closest_hit_record.t = t;
+			closest_hit_record.barycentric_coordinates = {{}};
+			closest_hit_record.vertex_indices = {{0, 0, 0}};
+		}
+				//return closest_hit_record.t < std::numeric_limits<float>::max();
+	#endif
+#endif
+		std::stack<uint32_t> node_index_stack {};
+		node_index_stack.push(0);
+		while (!node_index_stack.empty())
+		{
+			const auto node_index {node_index_stack.top()};
+			const auto& node {mesh.bvh_nodes.at(node_index)};
+			node_index_stack.pop();
+			if (!HitTestAabb(node.bounds, ray)) continue;
+			if (!node.IsLeaf())
+			{
+				node_index_stack.push(node.left_child);
+				node_index_stack.push(node.left_child + 1);
+				continue;
+			}
+			for (uint32_t i = 0; i < node.tri_count; ++i)
+			{
+				const auto index_index {node.first_tri + i};
+				const auto triangle_index {mesh.bvh_tri_indices.at(index_index) * 3};
+				const auto vertex0_index {mesh.indices.at(triangle_index)};
+				const auto vertex1_index {mesh.indices.at(triangle_index + 1)};
+				const auto vertex2_index {mesh.indices.at(triangle_index + 2)};
+				const auto& v0 {mesh.vertices.at(vertex0_index)};
+				const auto& v1 {mesh.vertices.at(vertex1_index)};
+				const auto& v2 {mesh.vertices.at(vertex2_index)};
+				const Triangle triangle {
+				  Vector3 {v0.position},
+				  Vector3 {v1.position},
+				  Vector3 {v2.position},
+				  mesh.cull_mode
+				};
+				RayHitRecord hit_record {
+//#define BVH_VIZ_NODE_OWNER
+#ifdef BVH_VIZ_NODE_OWNER
+				  .object_index = node_index,
+#else
+				  .object_index = closest_hit_record.object_index,
+#endif
+				  .vertex_indices = {{vertex0_index, vertex1_index, vertex2_index}}
+				};
+				if (
+				  HitTestTriangle(triangle, ray, hit_record, ignore_hit_record) &&
+				  closest_hit_record.t > hit_record.t
+				)
+				{
+					closest_hit_record = hit_record;
+				}
+			}
+		}
+		return closest_hit_record.t < std::numeric_limits<float>::max();
 	}
 
 	[[maybe_unused]] static bool HitTestPrimitive(

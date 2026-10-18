@@ -61,10 +61,14 @@ namespace gfx
 
 		//--- Common Values ---
 		static Vector4 UnitX() { return {1, 0, 0, 0}; }
+
 		static Vector4 UnitY() { return {0, 1, 0, 0}; }
+
 		static Vector4 UnitZ() { return {0, 0, 1, 0}; }
+
 		static Vector4 UnitW() { return {0, 0, 0, 1}; }
+
 		static Vector4 Zero() { return {0, 0, 0, 0}; }
 	};
-}
+} //namespace gfx
 #endif //VECTOR4_HEADER

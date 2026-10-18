@@ -3,9 +3,9 @@
 //  Authors : Matthieu Delaere
 //  Copyright (c) 2026 Matthieu Delaere. All rights reserved.
 //==============================================================
-#include <vector4.h>
-#include <vector3.h>
 #include <vector2.h>
+#include <vector3.h>
+#include <vector4.h>
 using namespace gfx;
 
 //--- Standard Includes ---
@@ -15,48 +15,38 @@ using namespace gfx;
 #include <cstddef>
 
 Vector4::Vector4(const float _x, const float _y, const float _z, const float _w)
-	: x(_x)
-	, y(_y)
-	, z(_z)
-	, w(_w)
+  : x(_x), y(_y), z(_z), w(_w)
 {
 }
 
 Vector4::Vector4(const Vector3& v, const float _w)
-	: x(v.x)
-	, y(v.y)
-	, z(v.z)
-	, w(_w)
+  : x(v.x), y(v.y), z(v.z), w(_w)
 {
 }
 
 Vector3& Vector4::AsVector3()
 {
-	static_assert
-	(
-		offsetof(Vector4, x) == offsetof(Vector3, x) && offsetof
-		(Vector4, y) == offsetof(Vector3, y) && offsetof(Vector4, z) == offsetof
-		(Vector3, z),
-		"Layout mismatch between Vector4 and Vector3"
+	static_assert(
+	  offsetof(Vector4, x) == offsetof(Vector3, x) &&
+	    offsetof(Vector4, y) == offsetof(Vector3, y) &&
+	    offsetof(Vector4, z) == offsetof(Vector3, z),
+	  "Layout mismatch between Vector4 and Vector3"
 	);
 	return reinterpret_cast<Vector3&>(*this);
 }
 
 Vector2& Vector4::AsVector2()
 {
-	static_assert
-	(
-		offsetof(Vector4, x) == offsetof(Vector2, x) && offsetof
-		(Vector4, y) == offsetof(Vector2, y),
-		"Layout mismatch between Vector4 and Vector2"
+	static_assert(
+	  offsetof(Vector4, x) == offsetof(Vector2, x) &&
+	    offsetof(Vector4, y) == offsetof(Vector2, y),
+	  "Layout mismatch between Vector4 and Vector2"
 	);
 	return reinterpret_cast<Vector2&>(*this);
 }
 
 float Vector4::Magnitude() const
-{
-	return std::sqrt(x * x + y * y + z * z + w * w);
-}
+{ return std::sqrt(x * x + y * y + z * z + w * w); }
 
 float Vector4::SqrMagnitude() const { return x * x + y * y + z * z + w * w; }
 
@@ -81,24 +71,20 @@ Vector4 Vector4::Normalized() const
 }
 
 float Vector4::Dot(const Vector4& v1, const Vector4& v2)
-{
-	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z + v1.w * v2.w;
-}
+{ return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z + v1.w * v2.w; }
 
 Vector4 Vector4::Cross(const Vector4& v1, const Vector4& v2)
 {
 	return Vector4 {
-		v1.y * v2.z - v1.z * v2.y,
-		v1.z * v2.x - v1.x * v2.z,
-		v1.x * v2.y - v1.y * v2.x,
-		0.f
+	  v1.y * v2.z - v1.z * v2.y,
+	  v1.z * v2.x - v1.x * v2.z,
+	  v1.x * v2.y - v1.y * v2.x,
+	  0.f
 	};
 }
 
 Vector4 Vector4::operator*(const float scale) const
-{
-	return {x * scale, y * scale, z * scale, w * scale};
-}
+{ return {x * scale, y * scale, z * scale, w * scale}; }
 
 Vector4 Vector4::operator/(const float scale) const
 {
@@ -107,14 +93,10 @@ Vector4 Vector4::operator/(const float scale) const
 }
 
 Vector4 Vector4::operator+(const Vector4& v) const
-{
-	return {x + v.x, y + v.y, z + v.z, w + v.w};
-}
+{ return {x + v.x, y + v.y, z + v.z, w + v.w}; }
 
 Vector4 Vector4::operator-(const Vector4& v) const
-{
-	return {x - v.x, y - v.y, z - v.z, w - v.w};
-}
+{ return {x - v.x, y - v.y, z - v.z, w - v.w}; }
 
 Vector4 Vector4::operator-() const { return {-x, -y, -z, -w}; }
 

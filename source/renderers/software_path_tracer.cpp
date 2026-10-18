@@ -24,8 +24,9 @@ SoftwarePathTracer::~SoftwarePathTracer() = default;
 void SoftwarePathTracer::Render()
 {
 	assert(context_ && "Context not available!");
-
-#pragma omp parallel for schedule(auto) default(none) collapse(2)
+#ifndef GFX_DEBUG
+	#pragma omp parallel for schedule(auto) default(none) collapse(2)
+#endif
 	for (
 	  uint32_t screen_x = 0; screen_x < context_->surface_info.width; ++screen_x
 	)
@@ -42,7 +43,7 @@ void SoftwarePathTracer::RenderPixel(
   const uint32_t screen_y
 ) const
 {
-	const Ray ray {GetRay(
+	const auto ray {GetRay(
 	  screen_x,
 	  screen_y,
 	  context_->surface_info.width,
@@ -51,7 +52,7 @@ void SoftwarePathTracer::RenderPixel(
 	RayHitRecord hit_record {};
 	if (HitTest(ray, hit_record))
 	{
-		const ShadingInput shading_input {ConstructShadingInput(ray, hit_record)};
+		const auto shading_input {ConstructShadingInput(ray, hit_record)};
 		Visualize(screen_x, screen_y, hit_record, shading_input);
 	}
 	else
@@ -131,6 +132,12 @@ ShadingInput SoftwarePathTracer::ConstructShadingInput(
   RayHitRecord hit_record
 ) const
 {
+#ifdef BVH_VIZ_DEPTH
+	return {.world_normal = {0.f, 0.f, 0.f}, .world_position = {0.f, 0.f, 0.f}};
+#endif
+#ifdef BVH_VIZ_NODE_OWNER
+	return {.world_normal = {0.f, 0.f, 0.f}, .world_position = {0.f, 0.f, 0.f}};
+#endif
 	const auto& scene {*context_->scene_manager->GetActiveScene()};
 	const auto& object {scene.objects.at(hit_record.object_index)};
 	const auto& primitive {*scene.primitives_factory.Get(object.primitive_index)};
@@ -186,7 +193,9 @@ Vector3 SoftwarePathTracer::GetNormal(
 		const auto& normal1 {mesh.vertices.at(vertex_indices.value().at(1)).normal};
 		const auto& normal2 {mesh.vertices.at(vertex_indices.value().at(2)).normal};
 		assert(
-		  (normal0.has_value() && normal1.has_value() && normal2.has_value()) &&
+		  normal0.has_value() &&
+		  normal1.has_value() &&
+		  normal2.has_value() &&
 		  "no normals"
 		);
 		assert(barycentric_coordinates.has_value() && "no barycentric coordinates");
@@ -196,10 +205,7 @@ Vector3 SoftwarePathTracer::GetNormal(
 		         normal2.value() * bary.y)
 		          .Normalized()};
 	}
-	default:
-		//TODO: concepts?
-		assert(false && "no normal");
-		return {};
+	default: return {};
 	}
 }
 
@@ -233,9 +239,24 @@ void SoftwarePathTracer::Visualize(
 	{
 		const auto index {hit_record.object_index};
 		const ColorRgba color {
-		  static_cast<float>(index & 1),
-		  static_cast<float>((index >> 1) & 1),
-		  static_cast<float>((index >> 2) & 1)
+		  std::clamp(
+		    static_cast<float>(index & 1) -
+		      0.5f * static_cast<float>((index >> 3) & 1),
+		    0.f,
+		    1.f
+		  ),
+		  std::clamp(
+		    static_cast<float>((index >> 1) & 1) -
+		      0.5f * static_cast<float>((index >> 3) & 1),
+		    0.f,
+		    1.f
+		  ),
+		  std::clamp(
+		    static_cast<float>((index >> 2) & 1) -
+		      0.5f * static_cast<float>((index >> 3) & 1),
+		    0.f,
+		    1.f
+		  )
 		};
 		WriteColor(screen_x, screen_y, color);
 	}
