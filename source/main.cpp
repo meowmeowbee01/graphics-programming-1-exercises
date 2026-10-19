@@ -285,8 +285,11 @@ int main(int, char**)
 
 //Create scenes based on active renderer.
 #if defined(SOFTWARE_PATH_TRACER)
+	//context.scene_manager->CreateScene<PorscheScene>();
+	context.scene_manager->CreateScene<AngleGrinder>();
+	//context.scene_manager->CreateScene<OliverScene>();
 	context.scene_manager->CreateScene<BunnyScene>();
-	context.scene_manager->CreateScene<BasicScene>();
+	//context.scene_manager->CreateScene<BasicScene>();
 #elif defined(SOFTWARE_RASTERIZER)
 #elif defined(HARDWARE_RASTERIZER)
 #endif
@@ -319,6 +322,7 @@ int main(int, char**)
 	bool is_looping {true};
 	while (is_looping)
 	{
+		//is_looping = false;
 //Limit the entire frame if enabled.
 #if CPU_FRAME_LIMITER_ENABLED
 		//FrameLimiter limiter(120.0);

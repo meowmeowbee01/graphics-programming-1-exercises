@@ -87,7 +87,7 @@ namespace gfx
 
 		[[nodiscard]] bool IsLeaf() const { return left_child == 0; }
 
-		[[nodiscard]] bool IsTiny() const { return tri_count <= 4; }
+		[[nodiscard]] bool IsTiny() const { return tri_count <= 1; }
 	};
 
 	//--- Base Primitive ---

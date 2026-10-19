@@ -3,8 +3,8 @@
 //  Authors : Matthieu Delaere
 //  Copyright (c) 2026 Matthieu Delaere. All rights reserved.
 //==============================================================
-#include <cassert>
 #include <primitives.h>
+
 using namespace gfx;
 
 //--- Primitives AABB Updates ---
@@ -128,9 +128,20 @@ void TriangleMesh::BuildBvh(
 	//for (size_t i = 0; i < right_indices.size(); ++i)
 	//bvh_tri_indices.at(i + right.first_tri) = right_indices.at(i);
 
-	if (!left.IsTiny()) BuildBvh(triangle_centers, triangle_bounds, left_child);
+	if (!left.IsTiny())
+	{
+		BuildBvh(
+		  triangle_centers,
+		  triangle_bounds,
+		  bvh_nodes.at(parent_index).left_child
+		);
+	}
 	if (!right.IsTiny())
-		BuildBvh(triangle_centers, triangle_bounds, left_child + 1);
+		BuildBvh(
+		  triangle_centers,
+		  triangle_bounds,
+		  bvh_nodes.at(parent_index).left_child + 1
+		);
 }
 
 void TriangleMesh::UpdateAabb()

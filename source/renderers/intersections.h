@@ -10,7 +10,9 @@
 #include <cassert>
 
 //--- Framework Includes ---
+#include <list>
 #include <primitives.h>
+#include <set>
 #include <stack>
 
 namespace gfx
@@ -231,7 +233,7 @@ namespace gfx
 	)
 	{
 		assert(!mesh.bvh_nodes.empty() && "bvh not built");
-//#define BVH_VIZ_DEPTH 3
+//#define BVH_VIZ_DEPTH 0
 #ifdef BVH_VIZ_DEPTH
 		std::vector<std::vector<BvhNode>> bvh_nodes {};
 		int depth {0};
@@ -326,7 +328,7 @@ namespace gfx
 				node_index_stack.push(node.left_child + 1);
 				continue;
 			}
-			for (uint32_t i = 0; i < node.tri_count; ++i)
+			for (size_t i {0}; i < node.tri_count; ++i)
 			{
 				const auto index_index {node.first_tri + i};
 				const auto triangle_index {mesh.bvh_tri_indices.at(index_index) * 3};

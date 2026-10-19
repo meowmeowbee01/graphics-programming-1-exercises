@@ -99,7 +99,12 @@ Ray SoftwarePathTracer::GetRay(
 	  matrix.TransformVector(ray_direction_view).Normalized()
 	};
 	const Vector3 origin {camera.GetPosition()};
-	return Ray {.origin = origin, .direction = ray_direction};
+	return Ray {
+	  .origin = origin,
+	  .direction = ray_direction,
+	  .min = 1e0f,
+	  .max = 5e1f
+	};
 }
 
 bool SoftwarePathTracer::HitTest(

@@ -336,6 +336,358 @@ namespace gfx
 	};
 
 	//-------------------------------------------------------------------------
+	//OliverScene: Cornell box with Oliver's stuff.
+	//-------------------------------------------------------------------------
+	struct OliverScene final : Scene
+	{
+		float light_time {0.f};
+		uint32_t light_index {0};
+		bool rotating_lights {true};
+
+		void Setup() override
+		{
+			//Camera setup
+			camera.SetPosition({0, 3, -9.f});
+			camera.SetFovAngle(45.f);
+
+			//Light setup
+			light_index = lights_factory.Create<Light>(Light {
+			  .origin = {0.f, 4.f, 5.f},
+			  .color = ColorRgba::White(),
+			  .intensity = 50.f,
+			  .type = LightType::kPoint
+			});
+
+			//Material setup
+			const uint32_t mat_white {materials_factory.Create<LambertMaterial>(
+			  LambertMaterialParams {.diffuse_color = ColorRgba(0.7f, 0.7f, 0.7f)}
+			)};
+			const uint32_t mat_red {materials_factory.Create<LambertMaterial>(
+			  LambertMaterialParams {.diffuse_color = ColorRgba(0.75f, 0.15f, 0.15f)}
+			)};
+			const uint32_t mat_green {materials_factory.Create<LambertMaterial>(
+			  LambertMaterialParams {.diffuse_color = ColorRgba(0.15f, 0.75f, 0.15f)}
+			)};
+
+			//Load bunny mesh
+			AssetLoader loader {};
+			loader.Load(
+			  "resources/models/custom_models/highbot.obj",
+			  *this,
+			  false,
+			  mat_white,
+			  false
+			);
+			objects.at(0).instance_transformation =
+			  Matrix::CreateRotationY(std::numbers::pi) *
+			  Matrix::CreateScale(2.f, 2.f, 2.f);
+
+			//Cornell box walls (bounded, single-sided)
+			constexpr bool ds {false};
+			const Vector2 fb_ext {5.f, 7.f};
+			const Vector2 wall_ext {7.f, 5.f};
+			const Vector2 back_ext {5.f, 5.f};
+			const uint32_t p_floor = primitives_factory.Create<Plane>(
+			  Vector3(0.f, 0.f, 3.f),
+			  Vector3(0.f, 1.f, 0.f),
+			  ds,
+			  fb_ext
+			);
+			const uint32_t p_ceiling = primitives_factory.Create<Plane>(
+			  Vector3(0.f, 10.f, 3.f),
+			  Vector3(0.f, -1.f, 0.f),
+			  ds,
+			  fb_ext
+			);
+			const uint32_t p_back = primitives_factory.Create<Plane>(
+			  Vector3(0.f, 5.f, 10.f),
+			  Vector3(0.f, 0.f, -1.f),
+			  ds,
+			  back_ext
+			);
+			const uint32_t p_left = primitives_factory.Create<Plane>(
+			  Vector3(-5.f, 5.f, 3.f),
+			  Vector3(1.f, 0.f, 0.f),
+			  ds,
+			  wall_ext
+			);
+			const uint32_t p_right = primitives_factory.Create<Plane>(
+			  Vector3(5.f, 5.f, 3.f),
+			  Vector3(-1.f, 0.f, 0.f),
+			  ds,
+			  wall_ext
+			);
+			objects.push_back(
+			  {.primitive_index = p_floor, .material_index = mat_white}
+			);
+			objects.push_back(
+			  {.primitive_index = p_ceiling, .material_index = mat_white}
+			);
+			objects.push_back(
+			  {.primitive_index = p_back, .material_index = mat_white}
+			);
+			objects.push_back({.primitive_index = p_left, .material_index = mat_red});
+			objects.push_back(
+			  {.primitive_index = p_right, .material_index = mat_green}
+			);
+		}
+
+		bool Update(const double delta_time) override
+		{
+			if (!rotating_lights) return false;
+
+			if (const auto light = lights_factory.GetAs<Light>(light_index))
+			{
+				light_time += static_cast<float>(delta_time) * 2.5f;
+				constexpr float radius {4.f};
+				constexpr float center_y {7.f};
+				constexpr float center_z {5.f};
+				light->origin = {
+				  std::cos(light_time) * radius,
+				  center_y,
+				  center_z + std::sin(light_time) * radius
+				};
+			}
+			return true;
+		}
+	};
+
+	//-------------------------------------------------------------------------
+	//AngleGrinder: Cornell box with Manu's angle grinder.
+	//-------------------------------------------------------------------------
+	struct AngleGrinder final : Scene
+	{
+		float light_time {0.f};
+		uint32_t light_index {0};
+		bool rotating_lights {true};
+
+		void Setup() override
+		{
+			//Camera setup
+			camera.SetPosition({0, 3, -9.f});
+			camera.SetFovAngle(45.f);
+
+			//Light setup
+			light_index = lights_factory.Create<Light>(Light {
+			  .origin = {0.f, 4.f, 5.f},
+			  .color = ColorRgba::White(),
+			  .intensity = 50.f,
+			  .type = LightType::kPoint
+			});
+
+			//Material setup
+			const uint32_t mat_white {materials_factory.Create<LambertMaterial>(
+			  LambertMaterialParams {.diffuse_color = ColorRgba(0.7f, 0.7f, 0.7f)}
+			)};
+			const uint32_t mat_red {materials_factory.Create<LambertMaterial>(
+			  LambertMaterialParams {.diffuse_color = ColorRgba(0.75f, 0.15f, 0.15f)}
+			)};
+			const uint32_t mat_green {materials_factory.Create<LambertMaterial>(
+			  LambertMaterialParams {.diffuse_color = ColorRgba(0.15f, 0.75f, 0.15f)}
+			)};
+
+			//Load bunny mesh
+			AssetLoader loader {};
+			loader.Load(
+			  "resources/models/custom_models/angle_grinder_low_x10.obj",
+			  *this,
+			  false,
+			  mat_white,
+			  false
+			);
+			objects.at(0).instance_transformation =
+			  Matrix::CreateTranslation(-0.5f, 1.5f, 0.f) *
+			  Matrix::CreateRotationY(std::numbers::pi) *
+			  Matrix::CreateScale(2.f, 2.f, 2.f);
+
+			//Cornell box walls (bounded, single-sided)
+			constexpr bool ds {false};
+			const Vector2 fb_ext {5.f, 7.f};
+			const Vector2 wall_ext {7.f, 5.f};
+			const Vector2 back_ext {5.f, 5.f};
+			const uint32_t p_floor = primitives_factory.Create<Plane>(
+			  Vector3(0.f, 0.f, 3.f),
+			  Vector3(0.f, 1.f, 0.f),
+			  ds,
+			  fb_ext
+			);
+			const uint32_t p_ceiling = primitives_factory.Create<Plane>(
+			  Vector3(0.f, 10.f, 3.f),
+			  Vector3(0.f, -1.f, 0.f),
+			  ds,
+			  fb_ext
+			);
+			const uint32_t p_back = primitives_factory.Create<Plane>(
+			  Vector3(0.f, 5.f, 10.f),
+			  Vector3(0.f, 0.f, -1.f),
+			  ds,
+			  back_ext
+			);
+			const uint32_t p_left = primitives_factory.Create<Plane>(
+			  Vector3(-5.f, 5.f, 3.f),
+			  Vector3(1.f, 0.f, 0.f),
+			  ds,
+			  wall_ext
+			);
+			const uint32_t p_right = primitives_factory.Create<Plane>(
+			  Vector3(5.f, 5.f, 3.f),
+			  Vector3(-1.f, 0.f, 0.f),
+			  ds,
+			  wall_ext
+			);
+			objects.push_back(
+			  {.primitive_index = p_floor, .material_index = mat_white}
+			);
+			objects.push_back(
+			  {.primitive_index = p_ceiling, .material_index = mat_white}
+			);
+			objects.push_back(
+			  {.primitive_index = p_back, .material_index = mat_white}
+			);
+			objects.push_back({.primitive_index = p_left, .material_index = mat_red});
+			objects.push_back(
+			  {.primitive_index = p_right, .material_index = mat_green}
+			);
+		}
+
+		bool Update(const double delta_time) override
+		{
+			if (!rotating_lights) return false;
+
+			if (const auto light = lights_factory.GetAs<Light>(light_index))
+			{
+				light_time += static_cast<float>(delta_time) * 2.5f;
+				constexpr float radius {4.f};
+				constexpr float center_y {7.f};
+				constexpr float center_z {5.f};
+				light->origin = {
+				  std::cos(light_time) * radius,
+				  center_y,
+				  center_z + std::sin(light_time) * radius
+				};
+			}
+			return true;
+		}
+	};
+
+	//-------------------------------------------------------------------------
+	//porsche: Cornell box with Manu's porsche.
+	//-------------------------------------------------------------------------
+	struct PorscheScene final : Scene
+	{
+		float light_time {0.f};
+		uint32_t light_index {0};
+		bool rotating_lights {true};
+
+		void Setup() override
+		{
+			//Camera setup
+			camera.SetPosition({0, 3, -9.f});
+			camera.SetFovAngle(45.f);
+
+			//Light setup
+			light_index = lights_factory.Create<Light>(Light {
+			  .origin = {0.f, 4.f, 5.f},
+			  .color = ColorRgba::White(),
+			  .intensity = 50.f,
+			  .type = LightType::kPoint
+			});
+
+			//Material setup
+			const uint32_t mat_white {materials_factory.Create<LambertMaterial>(
+			  LambertMaterialParams {.diffuse_color = ColorRgba(0.7f, 0.7f, 0.7f)}
+			)};
+			const uint32_t mat_red {materials_factory.Create<LambertMaterial>(
+			  LambertMaterialParams {.diffuse_color = ColorRgba(0.75f, 0.15f, 0.15f)}
+			)};
+			const uint32_t mat_green {materials_factory.Create<LambertMaterial>(
+			  LambertMaterialParams {.diffuse_color = ColorRgba(0.15f, 0.75f, 0.15f)}
+			)};
+
+			//Load bunny mesh
+			AssetLoader loader {};
+			loader.Load(
+			  "resources/models/custom_models/Porsche911.obj",
+			  *this,
+			  false,
+			  mat_white,
+			  false
+			);
+			objects.at(0).instance_transformation =
+			  Matrix::CreateRotationY(std::numbers::pi) *
+			  Matrix::CreateScale(2.f, 2.f, 2.f);
+
+			//Cornell box walls (bounded, single-sided)
+			constexpr bool ds {false};
+			const Vector2 fb_ext {5.f, 7.f};
+			const Vector2 wall_ext {7.f, 5.f};
+			const Vector2 back_ext {5.f, 5.f};
+			const uint32_t p_floor = primitives_factory.Create<Plane>(
+			  Vector3(0.f, 0.f, 3.f),
+			  Vector3(0.f, 1.f, 0.f),
+			  ds,
+			  fb_ext
+			);
+			const uint32_t p_ceiling = primitives_factory.Create<Plane>(
+			  Vector3(0.f, 10.f, 3.f),
+			  Vector3(0.f, -1.f, 0.f),
+			  ds,
+			  fb_ext
+			);
+			const uint32_t p_back = primitives_factory.Create<Plane>(
+			  Vector3(0.f, 5.f, 10.f),
+			  Vector3(0.f, 0.f, -1.f),
+			  ds,
+			  back_ext
+			);
+			const uint32_t p_left = primitives_factory.Create<Plane>(
+			  Vector3(-5.f, 5.f, 3.f),
+			  Vector3(1.f, 0.f, 0.f),
+			  ds,
+			  wall_ext
+			);
+			const uint32_t p_right = primitives_factory.Create<Plane>(
+			  Vector3(5.f, 5.f, 3.f),
+			  Vector3(-1.f, 0.f, 0.f),
+			  ds,
+			  wall_ext
+			);
+			objects.push_back(
+			  {.primitive_index = p_floor, .material_index = mat_white}
+			);
+			objects.push_back(
+			  {.primitive_index = p_ceiling, .material_index = mat_white}
+			);
+			objects.push_back(
+			  {.primitive_index = p_back, .material_index = mat_white}
+			);
+			objects.push_back({.primitive_index = p_left, .material_index = mat_red});
+			objects.push_back(
+			  {.primitive_index = p_right, .material_index = mat_green}
+			);
+		}
+
+		bool Update(const double delta_time) override
+		{
+			if (!rotating_lights) return false;
+
+			if (const auto light = lights_factory.GetAs<Light>(light_index))
+			{
+				light_time += static_cast<float>(delta_time) * 2.5f;
+				constexpr float radius {4.f};
+				constexpr float center_y {7.f};
+				constexpr float center_z {5.f};
+				light->origin = {
+				  std::cos(light_time) * radius,
+				  center_y,
+				  center_z + std::sin(light_time) * radius
+				};
+			}
+			return true;
+		}
+	};
+
+	//-------------------------------------------------------------------------
 	//FlightHelmetScene: glTF FlightHelmet with directional light + HDRI.
 	//Shared between path tracer and rasterizer. Enable ENABLE_HELMET_ROTATION
 	//for the rasterizer to show the model spinning (disabled by default for PT).
