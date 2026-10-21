@@ -6,6 +6,8 @@
 #include <intersections.h>
 #include <scenes.h>
 #include <software_path_tracer.h>
+
+#include <ranges>
 using namespace gfx;
 
 //=============================================================================
@@ -52,8 +54,9 @@ void SoftwarePathTracer::RenderPixel(
 	RayHitRecord hit_record {};
 	if (HitTest(ray, hit_record))
 	{
-		const auto shading_input {ConstructShadingInput(ray, hit_record)};
-		Visualize(screen_x, screen_y, hit_record, shading_input);
+		const auto shading_input {ConstructShadingInput(hit_record)};
+		auto color {GetColor(hit_record, shading_input)};
+		WriteColor(screen_x, screen_y, color);
 	}
 	else
 		WriteColor(
@@ -95,7 +98,7 @@ Ray SoftwarePathTracer::GetRay(
 	};
 	const auto& matrix {camera.GetView()};
 	const Vector3 ray_direction_view {ndc_x, ndc_y, 1.f};
-	const Vector3 ray_direction {
+	const auto ray_direction {
 	  matrix.TransformVector(ray_direction_view).Normalized()
 	};
 	const Vector3 origin {camera.GetPosition()};
@@ -109,16 +112,18 @@ Ray SoftwarePathTracer::GetRay(
 
 bool SoftwarePathTracer::HitTest(
   const Ray& ray,
-  RayHitRecord& closest_hit_record
+  RayHitRecord& closest_hit_record,
+  const bool ignore_hit_record
 ) const
 {
 	const auto& scene {*context_->scene_manager->GetActiveScene()};
+	bool did_hit {false};
 	for (size_t i {0}; i < scene.objects.size(); ++i)
 	{
 		const auto& object {scene.objects.at(i)};
-		Ray transformed_ray {
+		auto transformed_ray {
 		  object.instance_transformation.has_value()
-		    ? object.instance_transformation.value().TransformRay(ray)
+		    ? object.instance_transformation->TransformRay(ray)
 		    : ray
 		};
 		transformed_ray.max = std::min(ray.max, closest_hit_record.t);
@@ -126,16 +131,25 @@ bool SoftwarePathTracer::HitTest(
 		  *scene.primitives_factory.Get(object.primitive_index)
 		};
 		RayHitRecord hit_record {.object_index = static_cast<uint32_t>(i)};
-		if (HitTestPrimitive(primitive, transformed_ray, hit_record))
+		if (
+		  HitTestPrimitive(
+		    primitive,
+		    transformed_ray,
+		    hit_record,
+		    ignore_hit_record
+		  )
+		)
+		{
+			if (ignore_hit_record) return true;
+			did_hit = true;
 			closest_hit_record = hit_record;
+		}
 	}
-	return closest_hit_record.t < std::numeric_limits<float>::max();
+	return did_hit;
 }
 
-ShadingInput SoftwarePathTracer::ConstructShadingInput(
-  const Ray& ray,
-  RayHitRecord hit_record
-) const
+ShadingInput
+SoftwarePathTracer::ConstructShadingInput(RayHitRecord hit_record) const
 {
 #ifdef BVH_VIZ_DEPTH
 	return {.world_normal = {0.f, 0.f, 0.f}, .world_position = {0.f, 0.f, 0.f}};
@@ -146,7 +160,7 @@ ShadingInput SoftwarePathTracer::ConstructShadingInput(
 	const auto& scene {*context_->scene_manager->GetActiveScene()};
 	const auto& object {scene.objects.at(hit_record.object_index)};
 	const auto& primitive {*scene.primitives_factory.Get(object.primitive_index)};
-	auto point {ray.origin + ray.direction * hit_record.t};
+	auto point {hit_record.ray.origin + hit_record.ray.direction * hit_record.t};
 	auto normal {GetNormal(
 	  primitive,
 	  point,
@@ -155,7 +169,7 @@ ShadingInput SoftwarePathTracer::ConstructShadingInput(
 	)};
 	if (object.instance_transformation.has_value())
 	{
-		const auto& matrix {object.instance_transformation.value().GetInverse()};
+		const auto& matrix {object.instance_transformation->GetInverse()};
 		point = matrix.TransformPoint(point);
 		normal = matrix.TransformNormal(normal);
 	}
@@ -214,9 +228,25 @@ Vector3 SoftwarePathTracer::GetNormal(
 	}
 }
 
-void SoftwarePathTracer::Visualize(
-  const uint32_t screen_x,
-  const uint32_t screen_y,
+ColorRgba SoftwarePathTracer::CalculateRadiance(
+  const Light& light,
+  const Vector3& world_position
+)
+{
+	switch (light.type)
+	{
+	case LightType::kDirectional: return light.color * light.intensity;
+	case LightType::kPoint:
+	{
+		const auto difference {light.origin - world_position};
+		return light.color * light.intensity / Vector3::Dot(difference, difference);
+	}
+	case LightType::kNone: return ColorRgba {0.f};
+	default: return light.color * light.intensity;
+	}
+}
+
+ColorRgba SoftwarePathTracer::GetColor(
   const RayHitRecord& hit_record,
   const ShadingInput& shading_input
 ) const
@@ -227,43 +257,63 @@ void SoftwarePathTracer::Visualize(
 	{
 		constexpr float max_depth {100.f};
 		const float scaled_t {1.f - std::clamp(hit_record.t / max_depth, 0.f, 1.f)};
-		WriteColor(screen_x, screen_y, ColorRgba {scaled_t});
+		return ColorRgba {scaled_t};
 	}
 	break;
 	case VisualizationMode::kNormals:
 	{
-		const ColorRgba color {
+		return ColorRgba {
 		  (shading_input.world_normal.x + 1.f) * 0.5f,
 		  (shading_input.world_normal.y + 1.f) * 0.5f,
 		  (shading_input.world_normal.z + 1.f) * 0.5f
 		};
-		WriteColor(screen_x, screen_y, color);
 	}
 	break;
 	default:
 	{
 		const auto index {hit_record.object_index};
-		const ColorRgba color {
-		  std::clamp(
-		    static_cast<float>(index & 1) -
-		      0.5f * static_cast<float>((index >> 3) & 1),
-		    0.f,
-		    1.f
-		  ),
-		  std::clamp(
-		    static_cast<float>((index >> 1) & 1) -
-		      0.5f * static_cast<float>((index >> 3) & 1),
-		    0.f,
-		    1.f
-		  ),
-		  std::clamp(
-		    static_cast<float>((index >> 2) & 1) -
-		      0.5f * static_cast<float>((index >> 3) & 1),
-		    0.f,
-		    1.f
-		  )
+		ColorRgba color {
+		  static_cast<float>(index & 1) -
+		    0.5f * static_cast<float>((index >> 3) & 1),
+		  static_cast<float>((index >> 1) & 1) -
+		    0.5f * static_cast<float>((index >> 3) & 1),
+		  static_cast<float>((index >> 2) & 1) -
+		    0.5f * static_cast<float>((index >> 3) & 1),
 		};
-		WriteColor(screen_x, screen_y, color);
+		//ColorRgba color {};
+		//const auto& scene {*context_->scene_manager->GetActiveScene()};
+		//const auto deref {[]<typename T>(const T* p) { return *p; }};
+		//const auto& lights {
+		//  scene.lights_factory.GetAll() | std::views::transform(deref)
+		//};
+		//for (const auto& light : lights)
+		//{
+		//	auto light_direction {
+		//	  light.type == LightType::kDirectional
+		//	    ? -light.direction
+		//	    : light.origin - shading_input.world_position
+		//	};
+		//	const auto light_distance {light_direction.Normalize()};
+		//	const auto cos_theta {
+		//	  Vector3::Dot(shading_input.world_normal, light_direction)
+		//	};
+		//	if (cos_theta <= 0.f) continue;
+		//	const Ray shadow_ray {
+		//	  .origin = shading_input.world_position,
+		//	  .direction = light_direction,
+		//	  .min = 1e-3f,
+		//	  .max = light.type == LightType::kDirectional
+		//	    ? std::numeric_limits<float>::max()
+		//	    : light_distance
+		//	};
+		//	RayHitRecord shadow_hit_record {};
+		//	if (HitTest(shadow_ray, shadow_hit_record, true)) continue;
+		//	const auto rad {CalculateRadiance(light, shading_input.world_position)};
+		//	color += rad * cos_theta;
+		//}
+		color = color.Tonemap(context_->debug_params.tone_map_operator).ToSrgb();
+		color.Clamp();
+		return color;
 	}
 	break;
 	}

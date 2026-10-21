@@ -39,10 +39,14 @@ namespace gfx
 		  uint32_t screen_height
 		) const;
 
-		bool HitTest(const Ray& ray, RayHitRecord& closest_hit_record) const;
+		bool HitTest(
+		  const Ray& ray,
+		  RayHitRecord& closest_hit_record,
+		  bool ignore_hit_record = false
+		) const;
 
 		[[nodiscard]] ShadingInput
-		ConstructShadingInput(const Ray& ray, RayHitRecord hit_record) const;
+		ConstructShadingInput(RayHitRecord hit_record) const;
 
 		static Vector3 GetNormal(
 		  const Primitive& primitive,
@@ -51,9 +55,10 @@ namespace gfx
 		  std::optional<Vector2> barycentric_coordinates
 		);
 
-		void Visualize(
-		  uint32_t screen_x,
-		  uint32_t screen_y,
+		static ColorRgba
+		CalculateRadiance(const Light& light, const Vector3& world_position);
+
+		[[nodiscard]] ColorRgba GetColor(
 		  const RayHitRecord& hit_record,
 		  const ShadingInput& shading_input
 		) const;
