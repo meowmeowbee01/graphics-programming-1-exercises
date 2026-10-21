@@ -496,7 +496,7 @@ namespace gfx
 			  false
 			);
 			objects.at(0).instance_transformation =
-			  Matrix::CreateTranslation(-0.5f, 1.5f, 0.f) *
+			  Matrix::CreateTranslation(-0.5f, 1.5f, -3.f) *
 			  Matrix::CreateRotationY(std::numbers::pi) *
 			  Matrix::CreateScale(2.f, 2.f, 2.f);
 

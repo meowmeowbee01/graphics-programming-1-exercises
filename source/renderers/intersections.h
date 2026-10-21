@@ -314,6 +314,7 @@ namespace gfx
 				//return closest_hit_record.t < std::numeric_limits<float>::max();
 	#endif
 #endif
+		bool did_hit {false};
 		std::stack<uint32_t> node_index_stack {};
 		node_index_stack.push(0);
 		while (!node_index_stack.empty())
@@ -353,16 +354,19 @@ namespace gfx
 #endif
 				  .vertex_indices = {{vertex0_index, vertex1_index, vertex2_index}}
 				};
+				Ray capped_ray {ray};
+				capped_ray.max = std::min(ray.max, closest_hit_record.t);
 				if (
-				  HitTestTriangle(triangle, ray, hit_record, ignore_hit_record) &&
-				  closest_hit_record.t > hit_record.t
+				  HitTestTriangle(triangle, capped_ray, hit_record, ignore_hit_record)
 				)
 				{
+					if (ignore_hit_record) return true;
+					did_hit = true;
 					closest_hit_record = hit_record;
 				}
 			}
 		}
-		return closest_hit_record.t < std::numeric_limits<float>::max();
+		return did_hit;
 	}
 
 	[[maybe_unused]] static bool HitTestPrimitive(

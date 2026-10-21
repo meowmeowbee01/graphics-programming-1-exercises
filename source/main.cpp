@@ -288,6 +288,7 @@ int main(int, char**)
 	//context.scene_manager->CreateScene<PorscheScene>();
 	context.scene_manager->CreateScene<AngleGrinder>();
 	//context.scene_manager->CreateScene<OliverScene>();
+	context.scene_manager->CreateScene<InstanceScene>();
 	context.scene_manager->CreateScene<BunnyScene>();
 	//context.scene_manager->CreateScene<BasicScene>();
 #elif defined(SOFTWARE_RASTERIZER)
