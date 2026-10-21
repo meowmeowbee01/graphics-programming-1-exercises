@@ -20,25 +20,12 @@ namespace gfx
 	 * \param kd Diffuse Reflection Coefficient
 	 * \param cd Diffuse Color
 	 */
-	[[maybe_unused]]
-	static ColorRgba Lambert(const float kd, const ColorRgba& cd)
-	{
-		// TODO
-		assert(false && "Not Implemented");
-		(void)kd;
-		(void)cd;
-		return {};
-	}
+	[[maybe_unused]] static ColorRgba Lambert(const float kd, const ColorRgba& cd)
+	{ return cd * kd / std::numbers::pi_v<float>; }
 
-	[[maybe_unused]]
-	static ColorRgba Lambert(const ColorRgba& kd, const ColorRgba& cd)
-	{
-		// TODO
-		assert(false && "Not Implemented");
-		(void)kd;
-		(void)cd;
-		return {};
-	}
+	[[maybe_unused]] static ColorRgba
+	Lambert(const ColorRgba& kd, const ColorRgba& cd)
+	{ return cd * kd / std::numbers::pi_v<float>; }
 
 	/**
 	* \brief BRDF Fresnel Function >> Schlick
@@ -48,11 +35,13 @@ namespace gfx
 	Refraction), this is different for Dielectrics (Non-Metal) and Conductors
 	(Metal)
 	*/
-	[[maybe_unused]]
-	static ColorRgba FresnelFunctionSchlick(
-		const Vector3& h, const Vector3& v, const ColorRgba& f0)
+	[[maybe_unused]] static ColorRgba FresnelFunctionSchlick(
+	  const Vector3& h,
+	  const Vector3& v,
+	  const ColorRgba& f0
+	)
 	{
-		// TODO
+		//TODO
 		assert(false && "Not Implemented");
 		(void)h;
 		(void)v;
@@ -67,11 +56,13 @@ namespace gfx
 	 * \param h Normalized half vector
 	 * \param roughness Roughness of the material
 	 */
-	[[maybe_unused]]
-	static float NormalDistributionGgx(
-		const Vector3& n, const Vector3& h, const float roughness)
+	[[maybe_unused]] static float NormalDistributionGgx(
+	  const Vector3& n,
+	  const Vector3& h,
+	  const float roughness
+	)
 	{
-		// TODO
+		//TODO
 		assert(false && "Not Implemented");
 		(void)n;
 		(void)h;
@@ -87,14 +78,14 @@ namespace gfx
 	 * \param roughness Roughness of the material
 	 * \param is_indirect If true, should use indirect k remapping
 	 */
-	[[maybe_unused]]
-	static float GeometryFunctionSchlickGgx(
-		const Vector3& n,
-		const Vector3& v,
-		const float roughness,
-		[[maybe_unused]] const bool is_indirect = false)
+	[[maybe_unused]] static float GeometryFunctionSchlickGgx(
+	  const Vector3& n,
+	  const Vector3& v,
+	  const float roughness,
+	  [[maybe_unused]] const bool is_indirect = false
+	)
 	{
-		// TODO
+		//TODO
 		assert(false && "Not Implemented");
 		(void)n;
 		(void)v;
@@ -110,15 +101,15 @@ namespace gfx
 	 * \param roughness Roughness of the material
 	 * \param is_indirect (see GeometryFunction_SchlickGGX).
 	 */
-	[[maybe_unused]]
-	static float GeometryFunctionSmith(
-		const Vector3& n,
-		const Vector3& v,
-		const Vector3& l,
-		const float roughness,
-		[[maybe_unused]] const bool is_indirect = false)
+	[[maybe_unused]] static float GeometryFunctionSmith(
+	  const Vector3& n,
+	  const Vector3& v,
+	  const Vector3& l,
+	  const float roughness,
+	  [[maybe_unused]] const bool is_indirect = false
+	)
 	{
-		// TODO
+		//TODO
 		assert(false && "Not Implemented");
 		(void)n;
 		(void)v;
@@ -126,5 +117,5 @@ namespace gfx
 		(void)roughness;
 		return {};
 	}
-} // namespace gfx
+} //namespace gfx
 #endif

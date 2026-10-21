@@ -50,8 +50,6 @@ namespace gfx
 
 		static ColorRgba
 		CalculateRadiance(const Light& light, const Vector3& world_position);
-		ColorRgba
-		GetLitColor(const ShadingInput& shading_input, const ColorRgba& brdf) const;
 
 		[[nodiscard]] ColorRgba GetColor(
 		  const RayHitRecord& hit_record,

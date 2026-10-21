@@ -265,11 +265,11 @@ namespace gfx
 		  const Factory<Texture>& textures
 		) const override
 		{
-			//TODO
-			assert(false && "Not Implemented");
-			(void)input;
 			(void)textures;
-			return {};
+			return {
+			  .albedo = params_.diffuse_color,
+			  .shading_normal = input.world_normal
+			};
 		}
 
 		[[nodiscard]] ColorRgba Shade(
@@ -277,11 +277,8 @@ namespace gfx
 		  const SurfaceProperties& surface
 		) const override
 		{
-			//TODO
-			assert(false && "Not Implemented");
 			(void)input;
-			(void)surface;
-			return {};
+			return Lambert(params_.diffuse_reflectance, surface.albedo);
 		}
 	};
 
