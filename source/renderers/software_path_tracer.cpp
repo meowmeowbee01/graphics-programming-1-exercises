@@ -258,6 +258,46 @@ ColorRgba SoftwarePathTracer::CalculateRadiance(
 	}
 }
 
+ColorRgba SoftwarePathTracer::GetLitColor(
+  const ShadingInput& shading_input,
+  const ColorRgba& brdf
+) const
+{
+	ColorRgba color {};
+	const auto& scene {*context_->scene_manager->GetActiveScene()};
+	const auto deref {[]<typename T>(const T* p) { return *p; }};
+	const auto& lights {
+	  scene.lights_factory.GetAll() | std::views::transform(deref)
+	};
+	for (const auto& light : lights)
+	{
+		auto point_to_light_direction {
+		  light.type == LightType::kDirectional
+		    ? -light.direction
+		    : light.origin - shading_input.world_position
+		};
+		const auto light_distance {point_to_light_direction.Normalize()};
+		//light_direction.Normalize();
+		const auto cos_theta {
+		  Vector3::Dot(shading_input.world_normal, point_to_light_direction)
+		};
+		if (cos_theta <= 0.f) continue;
+		const Ray shadow_ray {
+		  .origin = shading_input.shadow_origin,
+		  .direction = point_to_light_direction,
+		  .min = 1e-3f,
+		  .max = light.type == LightType::kDirectional
+		    ? std::numeric_limits<float>::max()
+		    : light_distance
+		};
+		RayHitRecord shadow_hit_record {};
+		if (HitTest(shadow_ray, shadow_hit_record, true)) continue;
+		const auto rad {CalculateRadiance(light, shading_input.world_position)};
+		color += rad * brdf * cos_theta;
+	}
+	return color;
+}
+
 ColorRgba SoftwarePathTracer::GetColor(
   const RayHitRecord& hit_record,
   const ShadingInput& shading_input
@@ -283,48 +323,16 @@ ColorRgba SoftwarePathTracer::GetColor(
 	break;
 	default:
 	{
-		//const auto index {hit_record.object_index};
-		//ColorRgba color {
-		//  static_cast<float>(index & 1) -
-		//    0.5f * static_cast<float>((index >> 3) & 1),
-		//  static_cast<float>((index >> 1) & 1) -
-		//    0.5f * static_cast<float>((index >> 3) & 1),
-		//  static_cast<float>((index >> 2) & 1) -
-		//    0.5f * static_cast<float>((index >> 3) & 1),
-		//};
-		ColorRgba color {};
 		const auto& scene {*context_->scene_manager->GetActiveScene()};
-		const auto deref {[]<typename T>(const T* p) { return *p; }};
-		const auto& lights {
-		  scene.lights_factory.GetAll() | std::views::transform(deref)
+		const auto& object {scene.objects.at(hit_record.object_index)};
+		const auto& material {*scene.materials_factory.Get(object.material_index)};
+		const auto& surface {
+		  material.GetSurfaceProperties(shading_input, scene.textures_factory)
 		};
-		for (const auto& light : lights)
-		{
-			auto point_to_light_direction {
-			  light.type == LightType::kDirectional
-			    ? -light.direction
-			    : light.origin - shading_input.world_position
-			};
-			const auto light_distance {point_to_light_direction.Normalize()};
-			//light_direction.Normalize();
-			const auto cos_theta {
-			  Vector3::Dot(shading_input.world_normal, point_to_light_direction)
-			};
-			if (cos_theta <= 0.f) continue;
-			const Ray shadow_ray {
-			  .origin = shading_input.shadow_origin,
-			  .direction = point_to_light_direction,
-			  .min = 1e-3f,
-			  .max = light.type == LightType::kDirectional
-			    ? std::numeric_limits<float>::max()
-			    : light_distance
-			};
-			RayHitRecord shadow_hit_record {};
-			if (HitTest(shadow_ray, shadow_hit_record, true)) continue;
-			const auto rad {CalculateRadiance(light, shading_input.world_position)};
-			color += rad * cos_theta;
-		}
-		color = color.Tonemap(context_->debug_params.tone_map_operator).ToSrgb();
+		const auto& brdf {surface.albedo};
+		auto color = GetLitColor(shading_input, brdf)
+		               .Tonemap(context_->debug_params.tone_map_operator)
+		               .ToSrgb();
 		color.Clamp();
 		return color;
 	}
