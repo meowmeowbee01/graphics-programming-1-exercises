@@ -149,7 +149,7 @@ bool SoftwarePathTracer::HitTest(
 }
 
 ShadingInput
-SoftwarePathTracer::ConstructShadingInput(RayHitRecord hit_record) const
+SoftwarePathTracer::ConstructShadingInput(const RayHitRecord& hit_record) const
 {
 #ifdef BVH_VIZ_DEPTH
 	return {.world_normal = {0.f, 0.f, 0.f}, .world_position = {0.f, 0.f, 0.f}};
@@ -160,68 +160,84 @@ SoftwarePathTracer::ConstructShadingInput(RayHitRecord hit_record) const
 	const auto& scene {*context_->scene_manager->GetActiveScene()};
 	const auto& object {scene.objects.at(hit_record.object_index)};
 	const auto& primitive {*scene.primitives_factory.Get(object.primitive_index)};
-	auto point {hit_record.ray.origin + hit_record.ray.direction * hit_record.t};
-	auto normal {GetNormal(
-	  primitive,
-	  point,
-	  hit_record.vertex_indices,
-	  hit_record.barycentric_coordinates
-	)};
-	if (object.instance_transformation.has_value())
-	{
-		const auto& matrix {object.instance_transformation.value()};
-		point = matrix.TransformPoint(point);
-		normal = matrix.TransformNormal(normal);
-	}
-	return ShadingInput {.world_normal = normal, .world_position = point};
-}
-
-Vector3 SoftwarePathTracer::GetNormal(
-  const Primitive& primitive,
-  const Vector3& point,
-  const std::optional<std::array<uint32_t, 3>>& vertex_indices,
-  const std::optional<Vector2> barycentric_coordinates
-)
-{
+	ShadingInput shading_input {};
+	auto& point {shading_input.world_position};
+	auto& normal {shading_input.world_normal};
+	auto& shadow_origin {shading_input.shadow_origin};
+	point = hit_record.ray.origin + hit_record.ray.direction * hit_record.t;
 	switch (primitive.type)
 	{
 	case PrimitiveType::kSphere:
 	{
 		const auto& sphere {dynamic_cast<const Sphere&>(primitive)};
-		return (point - sphere.origin).Normalized();
+		normal = (point - sphere.origin).Normalized();
+		shadow_origin = point + normal * 1e-3f;
 	}
+	break;
 	case PrimitiveType::kPlane:
 	{
 		const auto& plane {dynamic_cast<const Plane&>(primitive)};
-		return plane.normal;
+		normal = plane.normal;
+		shadow_origin = point + normal * 1e-3f;
 	}
+	break;
 	case PrimitiveType::kTriangle:
 	{
 		const auto& triangle {dynamic_cast<const Triangle&>(primitive)};
-		return triangle.normal;
+		normal = triangle.normal;
+		shadow_origin = point + normal * 1e-3f;
 	}
+	break;
 	case PrimitiveType::kTriangleMesh:
 	{
-		assert(vertex_indices.has_value() && "no vertex indices");
-		const auto& mesh {dynamic_cast<const TriangleMesh&>(primitive)};
-		const auto& normal0 {mesh.vertices.at(vertex_indices.value().at(0)).normal};
-		const auto& normal1 {mesh.vertices.at(vertex_indices.value().at(1)).normal};
-		const auto& normal2 {mesh.vertices.at(vertex_indices.value().at(2)).normal};
+		assert(hit_record.vertex_indices.has_value() && "no indices");
 		assert(
-		  normal0.has_value() &&
-		  normal1.has_value() &&
-		  normal2.has_value() &&
+		  hit_record.barycentric_coordinates.has_value() &&
+		  "no barycentric coordinates"
+		);
+		const auto& mesh {dynamic_cast<const TriangleMesh&>(primitive)};
+		const auto& indices {hit_record.vertex_indices.value()};
+		const auto& vertex0 {mesh.vertices.at(indices.at(0))};
+		const auto& vertex1 {mesh.vertices.at(indices.at(1))};
+		const auto& vertex2 {mesh.vertices.at(indices.at(2))};
+		assert(
+		  vertex0.normal.has_value() &&
+		  vertex1.normal.has_value() &&
+		  vertex2.normal.has_value() &&
 		  "no normals"
 		);
-		assert(barycentric_coordinates.has_value() && "no barycentric coordinates");
-		const auto& bary {barycentric_coordinates.value()};
-		return {(normal0.value() * (1.f - bary.x - bary.y) +
-		         normal1.value() * bary.x +
-		         normal2.value() * bary.y)
-		          .Normalized()};
+		const auto& normal0 {vertex0.normal.value()};
+		const auto& normal1 {vertex1.normal.value()};
+		const auto& normal2 {vertex2.normal.value()};
+		const auto& bary {hit_record.barycentric_coordinates.value()};
+		const auto& w {1.f - bary.x - bary.y};
+		const auto& u {bary.x};
+		const auto& v {bary.y};
+		normal = (normal0 * w + normal1 * u + normal2 * v).Normalized();
+		//todo: check this in the w04 solution
+		auto offset0 {point - Vector3 {vertex0.position}};
+		auto offset1 {point - Vector3 {vertex1.position}};
+		auto offset2 {point - Vector3 {vertex2.position}};
+		const auto& dot0 {std::min(0.f, Vector3::Dot(offset0, normal0))};
+		const auto& dot1 {std::min(0.f, Vector3::Dot(offset1, normal1))};
+		const auto& dot2 {std::min(0.f, Vector3::Dot(offset2, normal2))};
+		offset0 -= dot0 * normal0;
+		offset1 -= dot1 * normal1;
+		offset2 -= dot2 * normal2;
+		const Vector3& offset {w * offset0 + u * offset1 + v * offset2};
+		shadow_origin = point + offset + normal * 1e-3f;
 	}
-	default: return {};
+	break;
+	default: break;
 	}
+	if (object.instance_transformation.has_value())
+	{
+		const auto& matrix {object.instance_transformation.value()};
+		point = matrix.TransformPoint(point);
+		shadow_origin = matrix.TransformPoint(shadow_origin);
+		normal = matrix.TransformNormal(normal);
+	}
+	return shading_input;
 }
 
 ColorRgba SoftwarePathTracer::CalculateRadiance(
@@ -284,20 +300,20 @@ ColorRgba SoftwarePathTracer::GetColor(
 		};
 		for (const auto& light : lights)
 		{
-			auto light_direction {
+			auto point_to_light_direction {
 			  light.type == LightType::kDirectional
 			    ? -light.direction
 			    : light.origin - shading_input.world_position
 			};
-			const auto light_distance {light_direction.Normalize()};
+			const auto light_distance {point_to_light_direction.Normalize()};
 			//light_direction.Normalize();
 			const auto cos_theta {
-			  Vector3::Dot(shading_input.world_normal, light_direction)
+			  Vector3::Dot(shading_input.world_normal, point_to_light_direction)
 			};
 			if (cos_theta <= 0.f) continue;
 			const Ray shadow_ray {
-			  .origin = shading_input.world_position,
-			  .direction = light_direction,
+			  .origin = shading_input.shadow_origin,
+			  .direction = point_to_light_direction,
 			  .min = 1e-3f,
 			  .max = light.type == LightType::kDirectional
 			    ? std::numeric_limits<float>::max()

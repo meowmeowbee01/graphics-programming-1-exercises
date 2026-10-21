@@ -46,14 +46,7 @@ namespace gfx
 		) const;
 
 		[[nodiscard]] ShadingInput
-		ConstructShadingInput(RayHitRecord hit_record) const;
-
-		static Vector3 GetNormal(
-		  const Primitive& primitive,
-		  const Vector3& point,
-		  const std::optional<std::array<uint32_t, 3>>& vertex_indices,
-		  std::optional<Vector2> barycentric_coordinates
-		);
+		ConstructShadingInput(const RayHitRecord& hit_record) const;
 
 		static ColorRgba
 		CalculateRadiance(const Light& light, const Vector3& world_position);
