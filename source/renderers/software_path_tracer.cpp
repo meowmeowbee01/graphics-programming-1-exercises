@@ -30,11 +30,10 @@ void SoftwarePathTracer::Render()
 	#pragma omp parallel for schedule(auto) default(none) collapse(2)
 #endif
 	for (
-	  uint32_t screen_x = 0; screen_x < context_->surface_info.width; ++screen_x
+	  uint32_t screen_y = 0; screen_y < context_->surface_info.height; ++screen_y
 	)
 		for (
-		  uint32_t screen_y = 0; screen_y < context_->surface_info.height;
-		  ++screen_y
+		  uint32_t screen_x = 0; screen_x < context_->surface_info.width; ++screen_x
 		)
 			RenderPixel(screen_x, screen_y);
 }
@@ -206,21 +205,21 @@ SoftwarePathTracer::ConstructShadingInput(const RayHitRecord& hit_record) const
 		  vertex2.normal.has_value() &&
 		  "no normals"
 		);
-		const auto& normal0 {vertex0.normal.value()};
-		const auto& normal1 {vertex1.normal.value()};
-		const auto& normal2 {vertex2.normal.value()};
-		const auto& bary {hit_record.barycentric_coordinates.value()};
-		const auto& w {1.f - bary.x - bary.y};
-		const auto& u {bary.x};
-		const auto& v {bary.y};
+		const auto normal0 {vertex0.normal.value()};
+		const auto normal1 {vertex1.normal.value()};
+		const auto normal2 {vertex2.normal.value()};
+		const auto bary {hit_record.barycentric_coordinates.value()};
+		const auto w {1.f - bary.x - bary.y};
+		const auto u {bary.x};
+		const auto v {bary.y};
 		normal = (normal0 * w + normal1 * u + normal2 * v).Normalized();
 		//todo: check this in the w04 solution
 		auto offset0 {point - Vector3 {vertex0.position}};
 		auto offset1 {point - Vector3 {vertex1.position}};
 		auto offset2 {point - Vector3 {vertex2.position}};
-		const auto& dot0 {std::min(0.f, Vector3::Dot(offset0, normal0))};
-		const auto& dot1 {std::min(0.f, Vector3::Dot(offset1, normal1))};
-		const auto& dot2 {std::min(0.f, Vector3::Dot(offset2, normal2))};
+		const auto dot0 {std::min(0.f, Vector3::Dot(offset0, normal0))};
+		const auto dot1 {std::min(0.f, Vector3::Dot(offset1, normal1))};
+		const auto dot2 {std::min(0.f, Vector3::Dot(offset2, normal2))};
 		offset0 -= dot0 * normal0;
 		offset1 -= dot1 * normal1;
 		offset2 -= dot2 * normal2;
@@ -292,11 +291,16 @@ ColorRgba SoftwarePathTracer::GetColor(
 		return surface.albedo;
 	}
 	break;
+	case VisualizationMode::kMetallicRoughness:
+	{
+		return ColorRgba {0.f, surface.roughness, surface.metallic};
+	}
+	break;
 	default:
 	{
 		ColorRgba color {};
-		const auto deref {[]<typename T>(const T* p) { return *p; }};
-		const auto& lights {
+		const auto deref {[]<typename T>(const T* p) -> const T& { return *p; }};
+		const auto lights {
 		  scene.lights_factory.GetAll() | std::views::transform(deref)
 		};
 		for (const auto& light : lights)
@@ -321,10 +325,11 @@ ColorRgba SoftwarePathTracer::GetColor(
 			};
 			RayHitRecord shadow_hit_record {};
 			if (HitTest(shadow_ray, shadow_hit_record, true)) continue;
-			ShadingInput shading_input_with_light {shading_input};
-			shading_input_with_light.light_direction = point_to_light_direction;
-			const auto& brdf {material.Shade(shading_input_with_light, surface)};
-			const auto& rad {CalculateRadiance(light, shading_input.world_position)};
+			ShadingInput complete_shading_input {shading_input};
+			complete_shading_input.light_direction = point_to_light_direction;
+			complete_shading_input.view_direction = hit_record.ray.direction;
+			const auto brdf {material.Shade(complete_shading_input, surface)};
+			const auto rad {CalculateRadiance(light, shading_input.world_position)};
 			color += rad * brdf * cos_theta;
 		}
 		color = color.Tonemap(context_->debug_params.tone_map_operator).ToSrgb();
