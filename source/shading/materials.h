@@ -14,7 +14,6 @@
 #include <brdfs.h>
 #include <color.h>
 #include <factory.h>
-#include <ranges>
 #include <texture.h>
 #include <vector2.h>
 #include <vector3.h>
@@ -311,23 +310,53 @@ namespace gfx
 			};
 			SurfaceProperties props {
 			  .albedo = params_.albedo_color_factor,
-			  .f0 = ColorRgba::Lerp(
-			    ColorRgba {f0_dielectric},
-			    params_.albedo_color_factor,
-			    params_.metallic_factor
-			  ),
+			  .attenuation_color = params_.attenuation_color,
 			  .shading_normal = input.world_normal,
 			  .roughness = params_.roughness_factor,
 			  .metallic = params_.metallic_factor,
 			  .reflectance = params_.reflectance_factor,
 			  .transmission = params_.transmission_factor,
 			  .ior = params_.ior,
+			  .attenuation_distance = params_.attenuation_distance,
+			  .thickness = params_.thickness_factor,
 			  .alpha_params = params_.alpha_params,
 			};
-			if (!input.texture_coordinates.has_value()) return props;
-
+			if (input.texture_coordinates.has_value())
+			{
+				if (params_.albedo_color_texture.has_value())
+				{
+					const auto& tex {*textures.Get(params_.albedo_color_texture.value())};
+					const auto sample {tex.Sample(input.texture_coordinates.value())};
+					props.albedo *= tex.IsSrgb() ? sample.ToLinear() : sample;
+				}
+				if (params_.metallic_roughness_texture.has_value())
+				{
+					const auto& tex {
+					  *textures.Get(params_.metallic_roughness_texture.value())
+					};
+					const auto sample {tex.Sample(input.texture_coordinates.value())};
+					props.metallic *= sample.b;
+					props.roughness *= sample.g;
+				}
+				if (params_.occlusion_texture.has_value())
+				{
+					const auto& tex {*textures.Get(params_.occlusion_texture.value())};
+					const auto sample {tex.Sample(input.texture_coordinates.value())};
+					props.occlusion *= sample.r;
+				}
+				if (params_.thickness_texture.has_value())
+				{
+					const auto& tex {*textures.Get(params_.thickness_texture.value())};
+					const auto sample {tex.Sample(input.texture_coordinates.value())};
+					props.thickness *= sample.r;
+				}
+			}
+			props.f0 = ColorRgba::Lerp(
+			  ColorRgba {f0_dielectric},
+			  props.albedo,
+			  props.metallic
+			);
 			return props;
-			(void)textures;
 		}
 
 		[[nodiscard]] ColorRgba Shade(

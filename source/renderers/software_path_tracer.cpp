@@ -225,6 +225,19 @@ SoftwarePathTracer::ConstructShadingInput(const RayHitRecord& hit_record) const
 		offset2 -= dot2 * normal2;
 		const Vector3 offset {w * offset0 + u * offset1 + v * offset2};
 		shadow_origin = point + offset + normal * 1e-3f;
+		if (
+		  vertex0.texture_coordinates.has_value() &&
+		  vertex1.texture_coordinates.has_value() &&
+		  vertex2.texture_coordinates.has_value()
+		)
+			shading_input.texture_coordinates = Vector2 {
+			  w * vertex0.texture_coordinates->x +
+			    u * vertex1.texture_coordinates->x +
+			    v * vertex2.texture_coordinates->x,
+			  w * vertex0.texture_coordinates->y +
+			    u * vertex1.texture_coordinates->y +
+			    v * vertex2.texture_coordinates->y,
+			};
 	}
 	break;
 	default: break;
@@ -294,6 +307,16 @@ ColorRgba SoftwarePathTracer::GetColor(
 	case VisualizationMode::kMetallicRoughness:
 	{
 		return ColorRgba {0.f, surface.roughness, surface.metallic};
+	}
+	break;
+	case VisualizationMode::kUV:
+	{
+		if (!shading_input.texture_coordinates.has_value()) return ColorRgba {1.f};
+		return ColorRgba {
+		  shading_input.texture_coordinates->x,
+		  shading_input.texture_coordinates->y,
+		  0.f
+		};
 	}
 	break;
 	default:
