@@ -63,11 +63,11 @@ namespace gfx
 		[[nodiscard]] uint32_t GetTriangleCount() const
 		{
 			uint32_t count = 0;
-			for (const Primitive* p : primitives_factory.GetAll())
-				if (p->type == PrimitiveType::kTriangle) ++count;
-				else if (p->type == PrimitiveType::kTriangleMesh)
+			for (const Primitive& p : primitives_factory.GetAll())
+				if (p.type == PrimitiveType::kTriangle) ++count;
+				else if (p.type == PrimitiveType::kTriangleMesh)
 					count += static_cast<uint32_t>(
-					  dynamic_cast<const TriangleMesh*>(p)->indices.size() / 3
+					  dynamic_cast<const TriangleMesh*>(&p)->indices.size() / 3
 					);
 			return count;
 		}

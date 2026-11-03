@@ -299,11 +299,7 @@ ColorRgba SoftwarePathTracer::GetColor(
 	default:
 	{
 		ColorRgba color {};
-		const auto deref {[]<typename T>(const T* p) -> const T& { return *p; }};
-		const auto lights {
-		  scene.lights_factory.GetAll() | std::views::transform(deref)
-		};
-		for (const auto& light : lights)
+		for (const auto& light : scene.lights_factory.GetAll())
 		{
 			auto point_to_light_direction {
 			  light.type == LightType::kDirectional

@@ -309,7 +309,7 @@ namespace gfx
 			const auto f0_dielectric {
 			  std::powf((params_.ior - 1.f) / (params_.ior + 1.f), 2.f)
 			};
-			return SurfaceProperties {
+			SurfaceProperties props {
 			  .albedo = params_.albedo_color_factor,
 			  .f0 = ColorRgba::Lerp(
 			    ColorRgba {f0_dielectric},
@@ -319,11 +319,14 @@ namespace gfx
 			  .shading_normal = input.world_normal,
 			  .roughness = params_.roughness_factor,
 			  .metallic = params_.metallic_factor,
-			  //.reflectance = params_.reflectance_factor,
-			  //.transmission = params_.transmission_factor,
-			  //.ior = params_.ior,
-			  //.alpha_params = params_.alpha_params,
+			  .reflectance = params_.reflectance_factor,
+			  .transmission = params_.transmission_factor,
+			  .ior = params_.ior,
+			  .alpha_params = params_.alpha_params,
 			};
+			if (!input.texture_coordinates.has_value()) return props;
+
+			return props;
 			(void)textures;
 		}
 

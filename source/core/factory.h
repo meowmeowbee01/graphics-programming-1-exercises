@@ -10,6 +10,7 @@
 #include <cassert>
 #include <memory>
 #include <memory_resource>
+#include <ranges>
 #include <vector>
 
 namespace gfx
@@ -75,8 +76,13 @@ namespace gfx
 			return object ? static_cast<T*>(object) : nullptr;
 		}
 
-		[[nodiscard]] const std::vector<BaseType*>& GetAll() const
-		{ return objects_; }
+		[[nodiscard]] auto GetAll() const
+		{
+			const auto deref {
+			  [](const BaseType* p) -> const BaseType& { return *p; }
+			};
+			return objects_ | std::views::transform(deref);
+		}
 
 		template<typename T> [[nodiscard]] std::vector<T*> GetAllOfType() const
 		{
