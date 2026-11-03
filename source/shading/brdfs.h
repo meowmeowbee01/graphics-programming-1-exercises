@@ -41,12 +41,9 @@ namespace gfx
 	  const ColorRgba& f0
 	)
 	{
-		//TODO
-		assert(false && "Not Implemented");
-		(void)h;
-		(void)v;
-		(void)f0;
-		return {};
+		const auto hv {std::max(Vector3::Dot(h, v), 0.f)};
+		const auto penteracted {std::powf(1.f - hv, 5.f)};
+		return f0 + (ColorRgba {1.f} - f0) * penteracted;
 	}
 
 	/**
@@ -62,12 +59,13 @@ namespace gfx
 	  const float roughness
 	)
 	{
-		//TODO
-		assert(false && "Not Implemented");
-		(void)n;
-		(void)h;
-		(void)roughness;
-		return {};
+		const auto alpha_squared {std::powf(roughness, 4.0f)};
+		const auto nh_squared {std::powf(std::max(Vector3::Dot(n, h), 0.f), 2.f)};
+		const auto intermediate {nh_squared * (alpha_squared - 1.f) + 1.f};
+		const auto denominator {
+		  std::numbers::pi_v<float> * std::powf(intermediate, 2.f)
+		};
+		return alpha_squared / denominator;
 	}
 
 	/**
@@ -85,12 +83,13 @@ namespace gfx
 	  [[maybe_unused]] const bool is_indirect = false
 	)
 	{
-		//TODO
-		assert(false && "Not Implemented");
-		(void)n;
-		(void)v;
-		(void)roughness;
-		return {};
+		const auto k {
+		  is_indirect ? powf(roughness, 2.f) / 2.f
+		              : powf(roughness + 1.f, 2.f) / 8.f
+		};
+		const auto nv {std::max(Vector3::Dot(n, v), 0.f)};
+		const auto denominator {nv * (1.f - k) + k};
+		return nv / denominator;
 	}
 
 	/**
@@ -109,13 +108,8 @@ namespace gfx
 	  [[maybe_unused]] const bool is_indirect = false
 	)
 	{
-		//TODO
-		assert(false && "Not Implemented");
-		(void)n;
-		(void)v;
-		(void)l;
-		(void)roughness;
-		return {};
+		return GeometryFunctionSchlickGgx(n, v, roughness, is_indirect) *
+		  GeometryFunctionSchlickGgx(n, l, roughness, is_indirect);
 	}
 } //namespace gfx
 #endif

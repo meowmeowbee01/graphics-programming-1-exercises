@@ -104,7 +104,7 @@ Ray SoftwarePathTracer::GetRay(
 	return Ray {
 	  .origin = origin,
 	  .direction = ray_direction,
-	  .min = 1e-1f,
+	  .min = 1e-2f,
 	  .max = 5e1f
 	};
 }
@@ -157,9 +157,10 @@ SoftwarePathTracer::ConstructShadingInput(const RayHitRecord& hit_record) const
 	return {.world_normal = {0.f, 0.f, 0.f}, .world_position = {0.f, 0.f, 0.f}};
 #endif
 	const auto& scene {*context_->scene_manager->GetActiveScene()};
-	const auto& object {scene.objects.at(hit_record.object_index)};
+	const auto object {scene.objects.at(hit_record.object_index)};
 	const auto& primitive {*scene.primitives_factory.Get(object.primitive_index)};
 	ShadingInput shading_input {};
+	shading_input.view_direction = hit_record.ray.direction;
 	auto& point {shading_input.world_position};
 	auto& normal {shading_input.world_normal};
 	auto& shadow_origin {shading_input.shadow_origin};
@@ -195,10 +196,10 @@ SoftwarePathTracer::ConstructShadingInput(const RayHitRecord& hit_record) const
 		  "no barycentric coordinates"
 		);
 		const auto& mesh {dynamic_cast<const TriangleMesh&>(primitive)};
-		const auto& indices {hit_record.vertex_indices.value()};
-		const auto& vertex0 {mesh.vertices.at(indices.at(0))};
-		const auto& vertex1 {mesh.vertices.at(indices.at(1))};
-		const auto& vertex2 {mesh.vertices.at(indices.at(2))};
+		const auto indices {hit_record.vertex_indices.value()};
+		const auto vertex0 {mesh.vertices.at(indices.at(0))};
+		const auto vertex1 {mesh.vertices.at(indices.at(1))};
+		const auto vertex2 {mesh.vertices.at(indices.at(2))};
 		assert(
 		  vertex0.normal.has_value() &&
 		  vertex1.normal.has_value() &&
@@ -213,7 +214,6 @@ SoftwarePathTracer::ConstructShadingInput(const RayHitRecord& hit_record) const
 		const auto u {bary.x};
 		const auto v {bary.y};
 		normal = (normal0 * w + normal1 * u + normal2 * v).Normalized();
-		//todo: check this in the w04 solution
 		auto offset0 {point - Vector3 {vertex0.position}};
 		auto offset1 {point - Vector3 {vertex1.position}};
 		auto offset2 {point - Vector3 {vertex2.position}};
@@ -223,7 +223,7 @@ SoftwarePathTracer::ConstructShadingInput(const RayHitRecord& hit_record) const
 		offset0 -= dot0 * normal0;
 		offset1 -= dot1 * normal1;
 		offset2 -= dot2 * normal2;
-		const Vector3& offset {w * offset0 + u * offset1 + v * offset2};
+		const Vector3 offset {w * offset0 + u * offset1 + v * offset2};
 		shadow_origin = point + offset + normal * 1e-3f;
 	}
 	break;
@@ -265,7 +265,7 @@ ColorRgba SoftwarePathTracer::GetColor(
 	const auto& scene {*context_->scene_manager->GetActiveScene()};
 	const auto& object {scene.objects.at(hit_record.object_index)};
 	const auto& material {*scene.materials_factory.Get(object.material_index)};
-	const auto& surface {
+	const auto surface {
 	  material.GetSurfaceProperties(shading_input, scene.textures_factory)
 	};
 	switch (context_->debug_params.visualization_mode)
@@ -327,7 +327,8 @@ ColorRgba SoftwarePathTracer::GetColor(
 			if (HitTest(shadow_ray, shadow_hit_record, true)) continue;
 			ShadingInput complete_shading_input {shading_input};
 			complete_shading_input.light_direction = point_to_light_direction;
-			complete_shading_input.view_direction = hit_record.ray.direction;
+			complete_shading_input.view_direction = -hit_record.ray.direction;
+			complete_shading_input.world_normal = surface.shading_normal;
 			const auto brdf {material.Shade(complete_shading_input, surface)};
 			const auto rad {CalculateRadiance(light, shading_input.world_position)};
 			color += rad * brdf * cos_theta;

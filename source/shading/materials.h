@@ -14,6 +14,7 @@
 #include <brdfs.h>
 #include <color.h>
 #include <factory.h>
+#include <ranges>
 #include <texture.h>
 #include <vector2.h>
 #include <vector3.h>
@@ -265,11 +266,12 @@ namespace gfx
 		  const Factory<Texture>& textures
 		) const override
 		{
-			(void)textures;
 			return {
 			  .albedo = params_.diffuse_color,
-			  .shading_normal = input.world_normal
+			  .shading_normal = input.world_normal,
+			  .alpha_params = params_.alpha_params
 			};
+			(void)textures;
 		}
 
 		[[nodiscard]] ColorRgba Shade(
@@ -304,11 +306,25 @@ namespace gfx
 		  const Factory<Texture>& textures
 		) const override
 		{
-			//TODO
-			assert(false && "Not Implemented");
-			(void)input;
+			const auto f0_dielectric {
+			  std::powf((params_.ior - 1.f) / (params_.ior + 1.f), 2.f)
+			};
+			return SurfaceProperties {
+			  .albedo = params_.albedo_color_factor,
+			  .f0 = ColorRgba::Lerp(
+			    ColorRgba {f0_dielectric},
+			    params_.albedo_color_factor,
+			    params_.metallic_factor
+			  ),
+			  .shading_normal = input.world_normal,
+			  .roughness = params_.roughness_factor,
+			  .metallic = params_.metallic_factor,
+			  //.reflectance = params_.reflectance_factor,
+			  //.transmission = params_.transmission_factor,
+			  //.ior = params_.ior,
+			  //.alpha_params = params_.alpha_params,
+			};
 			(void)textures;
-			return {};
 		}
 
 		[[nodiscard]] ColorRgba Shade(
@@ -316,11 +332,33 @@ namespace gfx
 		  const SurfaceProperties& surface
 		) const override
 		{
-			//TODO
-			assert(false && "Not Implemented");
-			(void)input;
-			(void)surface;
-			return {};
+			const auto half_vector {
+			  (input.view_direction + input.light_direction).Normalized()
+			};
+			const auto f {
+			  FresnelFunctionSchlick(half_vector, input.view_direction, surface.f0)
+			};
+			const auto d {NormalDistributionGgx(
+			  surface.shading_normal,
+			  half_vector,
+			  surface.roughness
+			)};
+			const auto g {GeometryFunctionSmith(
+			  surface.shading_normal,
+			  input.view_direction,
+			  input.light_direction,
+			  surface.roughness
+			)};
+			const auto nv {
+			  Vector3::Dot(surface.shading_normal, input.view_direction)
+			};
+			const auto nl {
+			  Vector3::Dot(surface.shading_normal, input.light_direction)
+			};
+			const auto denominator {(4.f * std::max(nv, 0.f) * std::max(nl, 0.f))};
+			const auto specular {f * d * g / std::max(denominator, 1e-4f)};
+			const auto kd {(ColorRgba {1.f} - f) * (1.f - surface.metallic)};
+			return Lambert(kd, surface.albedo) + specular;
 		}
 	};
 } //namespace gfx

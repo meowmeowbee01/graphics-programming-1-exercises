@@ -288,6 +288,7 @@ int main(int, char**)
 	context.scene_manager->CreateScene<DamagedHelmetScene>();
 	context.scene_manager->CreateScene<CornellBoxScene>();
 	context.scene_manager->CreateScene<BunnyScene>();
+	context.scene_manager->CreateScene<TriangleScene>();
 	context.scene_manager->CreateScene<AngleGrinder>();
 	#ifndef GFX_DEBUG
 	context.scene_manager->CreateScene<PorscheScene>();
@@ -295,6 +296,7 @@ int main(int, char**)
 	//context.scene_manager->CreateScene<SuperScene>();
 
 	context.scene_manager->NextScene();
+
 #elif defined(SOFTWARE_RASTERIZER)
 #elif defined(HARDWARE_RASTERIZER)
 #endif
