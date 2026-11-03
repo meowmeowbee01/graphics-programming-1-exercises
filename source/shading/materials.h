@@ -106,7 +106,6 @@ namespace gfx
 	  const Factory<Texture>& textures
 	)
 	{
-		//TODO
 		if constexpr (has_normal_texture<ParamType>::value)
 		{
 			if (
@@ -116,10 +115,15 @@ namespace gfx
 			  input.world_bitangent.has_value()
 			)
 			{
-				//TODO
-				assert(false && "Not Implemented");
-				(void)textures;
-				return {};
+				const auto& tex {*textures.Get(params.normal_texture.value())};
+				const auto tangent_normal {
+				  tex.SampleNormal(input.texture_coordinates.value())
+				};
+				const auto t {input.world_tangent.value()};
+				const auto b {input.world_bitangent.value()};
+				const auto n {input.world_normal};
+				const Matrix tbn {t, b, n, Vector3 {}};
+				return tbn.TransformVector(tangent_normal).Normalized();
 			}
 		}
 		return input.world_normal; //Default fallback.
@@ -311,7 +315,7 @@ namespace gfx
 			SurfaceProperties props {
 			  .albedo = params_.albedo_color_factor,
 			  .attenuation_color = params_.attenuation_color,
-			  .shading_normal = input.world_normal,
+			  .shading_normal = SampleNormal(params_, input, textures),
 			  .roughness = params_.roughness_factor,
 			  .metallic = params_.metallic_factor,
 			  .reflectance = params_.reflectance_factor,

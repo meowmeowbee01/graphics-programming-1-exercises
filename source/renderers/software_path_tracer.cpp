@@ -230,14 +230,26 @@ SoftwarePathTracer::ConstructShadingInput(const RayHitRecord& hit_record) const
 		  vertex1.texture_coordinates.has_value() &&
 		  vertex2.texture_coordinates.has_value()
 		)
-			shading_input.texture_coordinates = Vector2 {
-			  w * vertex0.texture_coordinates->x +
-			    u * vertex1.texture_coordinates->x +
-			    v * vertex2.texture_coordinates->x,
-			  w * vertex0.texture_coordinates->y +
-			    u * vertex1.texture_coordinates->y +
-			    v * vertex2.texture_coordinates->y,
-			};
+			shading_input.texture_coordinates =
+			  w * vertex0.texture_coordinates.value() +
+			  u * vertex1.texture_coordinates.value() +
+			  v * vertex2.texture_coordinates.value();
+		if (
+		  vertex0.tangent.has_value() &&
+		  vertex1.tangent.has_value() &&
+		  vertex2.tangent.has_value()
+		)
+			shading_input.world_tangent = w * vertex0.tangent.value() +
+			  u * vertex1.tangent.value() +
+			  v * vertex2.tangent.value();
+		if (
+		  vertex0.bitangent.has_value() &&
+		  vertex1.bitangent.has_value() &&
+		  vertex2.bitangent.has_value()
+		)
+			shading_input.world_bitangent = w * vertex0.bitangent.value() +
+			  u * vertex1.bitangent.value() +
+			  v * vertex2.bitangent.value();
 	}
 	break;
 	default: break;
@@ -293,9 +305,9 @@ ColorRgba SoftwarePathTracer::GetColor(
 	case VisualizationMode::kNormals:
 	{
 		return ColorRgba {
-		  (shading_input.world_normal.x + 1.f) * 0.5f,
-		  (shading_input.world_normal.y + 1.f) * 0.5f,
-		  (shading_input.world_normal.z + 1.f) * 0.5f
+		  (surface.shading_normal.x + 1.f) * 0.5f,
+		  (surface.shading_normal.y + 1.f) * 0.5f,
+		  (surface.shading_normal.z + 1.f) * 0.5f
 		};
 	}
 	break;
