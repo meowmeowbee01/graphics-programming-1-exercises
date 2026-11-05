@@ -10,6 +10,22 @@
 #include <ranges>
 using namespace gfx;
 
+namespace
+{
+	uint32_t LowBias32(uint32_t h)
+	{
+		h ^= h >> 16;
+		h *= 0x7feb352du;
+		h ^= h >> 15;
+		h *= 0x846ca68bu;
+		h ^= h >> 16;
+		return h;
+	}
+
+	float HashToFloat(const uint32_t h)
+	{ return static_cast<float>(h >> 8) * (1.f / 16777216.f); }
+} //namespace
+
 //=============================================================================
 //Construction / Destruction
 //=============================================================================
