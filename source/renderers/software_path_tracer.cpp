@@ -160,7 +160,7 @@ SoftwarePathTracer::ConstructShadingInput(const RayHitRecord& hit_record) const
 	const auto object {scene.objects.at(hit_record.object_index)};
 	const auto& primitive {*scene.primitives_factory.Get(object.primitive_index)};
 	ShadingInput shading_input {};
-	shading_input.view_direction = hit_record.ray.direction;
+	shading_input.view_direction = -hit_record.ray.direction;
 	auto& point {shading_input.world_position};
 	auto& normal {shading_input.world_normal};
 	auto& shadow_origin {shading_input.shadow_origin};
@@ -282,6 +282,46 @@ ColorRgba SoftwarePathTracer::CalculateRadiance(
 	}
 }
 
+ColorRgba SoftwarePathTracer::DirectIllumination(
+  const ShadingInput& shading_input,
+  const Scene& scene,
+  const Material& material,
+  const SurfaceProperties& surface
+) const
+{
+	ColorRgba color {};
+	for (const auto& light : scene.lights_factory.GetAll())
+	{
+		auto point_to_light_direction {
+		  light.type == LightType::kDirectional
+		    ? -light.direction
+		    : light.origin - shading_input.world_position
+		};
+		const auto light_distance {point_to_light_direction.Normalize()};
+		const auto cos_theta {
+		  Vector3::Dot(shading_input.world_normal, point_to_light_direction)
+		};
+		if (cos_theta <= 0.f) continue;
+		const Ray shadow_ray {
+		  .origin = shading_input.shadow_origin,
+		  .direction = point_to_light_direction,
+		  .min = 1e-3f,
+		  .max = light.type == LightType::kDirectional
+		    ? std::numeric_limits<float>::max()
+		    : light_distance
+		};
+		RayHitRecord shadow_hit_record {};
+		if (HitTest(shadow_ray, shadow_hit_record, true)) continue;
+		ShadingInput complete_shading_input {shading_input};
+		complete_shading_input.light_direction = point_to_light_direction;
+		complete_shading_input.world_normal = surface.shading_normal;
+		const auto brdf {material.Shade(complete_shading_input, surface)};
+		const auto rad {CalculateRadiance(light, shading_input.world_position)};
+		color += rad * brdf * cos_theta;
+	}
+	return color;
+}
+
 ColorRgba SoftwarePathTracer::GetColor(
   const RayHitRecord& hit_record,
   const ShadingInput& shading_input
@@ -331,40 +371,22 @@ ColorRgba SoftwarePathTracer::GetColor(
 		};
 	}
 	break;
+	case VisualizationMode::kDirectOnly:
+	{
+		ColorRgba color =
+		  DirectIllumination(shading_input, scene, material, surface)
+		    .Tonemap(context_->debug_params.tone_map_operator)
+		    .ToSrgb();
+		color.Clamp();
+		return color;
+	}
+	break;
 	default:
 	{
-		ColorRgba color {};
-		for (const auto& light : scene.lights_factory.GetAll())
-		{
-			auto point_to_light_direction {
-			  light.type == LightType::kDirectional
-			    ? -light.direction
-			    : light.origin - shading_input.world_position
-			};
-			const auto light_distance {point_to_light_direction.Normalize()};
-			const auto cos_theta {
-			  Vector3::Dot(shading_input.world_normal, point_to_light_direction)
-			};
-			if (cos_theta <= 0.f) continue;
-			const Ray shadow_ray {
-			  .origin = shading_input.shadow_origin,
-			  .direction = point_to_light_direction,
-			  .min = 1e-3f,
-			  .max = light.type == LightType::kDirectional
-			    ? std::numeric_limits<float>::max()
-			    : light_distance
-			};
-			RayHitRecord shadow_hit_record {};
-			if (HitTest(shadow_ray, shadow_hit_record, true)) continue;
-			ShadingInput complete_shading_input {shading_input};
-			complete_shading_input.light_direction = point_to_light_direction;
-			complete_shading_input.view_direction = -hit_record.ray.direction;
-			complete_shading_input.world_normal = surface.shading_normal;
-			const auto brdf {material.Shade(complete_shading_input, surface)};
-			const auto rad {CalculateRadiance(light, shading_input.world_position)};
-			color += rad * brdf * cos_theta;
-		}
-		color = color.Tonemap(context_->debug_params.tone_map_operator).ToSrgb();
+		ColorRgba color =
+		  DirectIllumination(shading_input, scene, material, surface)
+		    .Tonemap(context_->debug_params.tone_map_operator)
+		    .ToSrgb();
 		color.Clamp();
 		return color;
 	}
