@@ -32,14 +32,14 @@ namespace gfx
 		kMax,
 	};
 
-	inline bool IsToneMapped(const VisualizationMode mode)
+	inline bool IsDebugView(const VisualizationMode mode)
 	{
 		switch (mode)
 		{
 		case VisualizationMode::kAo:
 		case VisualizationMode::kDirectOnly:
-		case VisualizationMode::kNone: return true;
-		default: return false;
+		case VisualizationMode::kNone: return false;
+		default: return true;
 		}
 	}
 
