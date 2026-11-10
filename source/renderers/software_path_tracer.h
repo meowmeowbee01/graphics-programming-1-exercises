@@ -30,6 +30,15 @@ namespace gfx
 		void Render() override;
 
 	private:
+		const uint32_t ao_sample_count_ {1};
+		const float ao_radius_ {10.f};
+
+		struct HemiSphereSample
+		{
+			Vector3 direction {};
+			float pdf {};
+		};
+
 		void RenderPixel(uint32_t screen_x, uint32_t screen_y) const;
 
 		[[nodiscard]] Ray GetRay(uint32_t screen_x, uint32_t screen_y) const;
@@ -62,17 +71,8 @@ namespace gfx
 		void
 		WriteColor(uint32_t screen_x, uint32_t screen_y, ColorRgba color) const;
 
-		const uint32_t ao_sample_count_ {32};
-		const float ao_radius_ {10.f};
-
 		[[nodiscard]] float
 		TraceAo(const ShadingInput& shading_input, uint32_t pixel_index) const;
-
-		struct HemiSphereSample
-		{
-			Vector3 direction {};
-			float pdf {};
-		};
 
 		[[nodiscard]] HemiSphereSample
 		GetHemiSphereSample(const Vector3& normal, uint32_t seed) const;
