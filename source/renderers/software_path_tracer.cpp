@@ -410,6 +410,7 @@ ColorRgba SoftwarePathTracer::GetColor(
 	case VisualizationMode::kAo:
 	{
 		ColorRgba color {TraceAo(shading_input, pixel_index)};
+		color = color.Tonemap(context_->debug_params.tone_map_operator).ToSrgb();
 		color.Clamp();
 		return color;
 	}
@@ -453,25 +454,35 @@ float SoftwarePathTracer::TraceAo(
 	for (uint32_t s {0}; s < ao_sample_count_; ++s)
 	{
 		const uint32_t ao_seed {pixel_index * 1973u + s * 6133u};
-		const auto sample {
-		  UniformHemiSphereSample(shading_input.world_normal, ao_seed)
+		const auto [direction, pdf] {
+		  GetHemiSphereSample(shading_input.world_normal, ao_seed)
 		};
 		const Ray ao_ray {
 		  .origin = shading_input.shadow_origin,
-		  .direction = sample.direction,
+		  .direction = direction,
 		  .min = 1e-3f,
 		  .max = ao_radius_
 		};
 		if (RayHitRecord ao_hit {}; HitTest(ao_ray, ao_hit, true)) continue;
 		const auto cos_theta {
-		  std::max(0.f, Vector3::Dot(sample.direction, shading_input.world_normal))
+		  std::max(0.f, Vector3::Dot(direction, shading_input.world_normal))
 		};
 		const float f {cos_theta / std::numbers::pi_v<float>};
-		const auto weighted {f / sample.pdf};
-		if (weighted - 2.f * cos_theta > 1e3f) std::cout << "weird";
-		if (sample.pdf > 0.f) visibility_sum += weighted;
+		if (pdf > 0.f) visibility_sum += f / pdf;
 	}
 	return visibility_sum / static_cast<float>(ao_sample_count_);
+}
+
+SoftwarePathTracer::HemiSphereSample SoftwarePathTracer::GetHemiSphereSample(
+  const Vector3& normal,
+  const uint32_t seed
+) const
+{
+	switch (context_->debug_params.sampling_strategy)
+	{
+	case SamplingStrategy::kUniform: return UniformHemiSphereSample(normal, seed);
+	default: return CosineHemiSphereSample(normal, seed);
+	}
 }
 
 SoftwarePathTracer::HemiSphereSample
@@ -491,5 +502,24 @@ SoftwarePathTracer::UniformHemiSphereSample(
 	const auto sin_phi {std::sinf(phi)};
 	const Vector3 local {sin_theta * cos_phi, sin_theta * sin_phi, cos_theta};
 	constexpr auto pdf {1.f / (2.f * std::numbers::pi_v<float>)};
+	return {.direction = LocalToWorld(local, normal), .pdf = pdf};
+}
+
+SoftwarePathTracer::HemiSphereSample SoftwarePathTracer::CosineHemiSphereSample(
+  const Vector3& normal,
+  const uint32_t seed
+)
+{
+	const auto h1 {LowBias32(seed)};
+	const auto u1 {HashToFloat(h1)};
+	const auto h2 {LowBias32(h1)};
+	const auto u2 {HashToFloat(h2)};
+	const auto cos_theta {std::sqrtf(1.f - u2)};
+	const auto sin_theta {std::sqrtf(u2)};
+	const auto phi {u1 * std::numbers::pi_v<float> * 2.f};
+	const auto cos_phi {std::cosf(phi)};
+	const auto sin_phi {std::sinf(phi)};
+	const Vector3 local {sin_theta * cos_phi, sin_theta * sin_phi, cos_theta};
+	const auto pdf {cos_theta / std::numbers::pi_v<float>};
 	return {.direction = LocalToWorld(local, normal), .pdf = pdf};
 }

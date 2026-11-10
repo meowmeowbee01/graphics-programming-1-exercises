@@ -74,8 +74,14 @@ namespace gfx
 			float pdf {};
 		};
 
+		[[nodiscard]] HemiSphereSample
+		GetHemiSphereSample(const Vector3& normal, uint32_t seed) const;
+
 		static HemiSphereSample
 		UniformHemiSphereSample(const Vector3& normal, uint32_t seed);
+
+		static HemiSphereSample
+		CosineHemiSphereSample(const Vector3& normal, uint32_t seed);
 	};
 } //namespace gfx
 #endif //SOFTWARE_PATH_TRACER_HEADER
