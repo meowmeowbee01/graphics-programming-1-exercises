@@ -30,12 +30,12 @@ namespace gfx
 		void Render() override;
 
 	private:
-		const uint32_t ao_sample_count_ {32};
+		const uint32_t ao_sample_count_ {1};
 		const float ao_radius_ {10.f};
 
-		//VisualizationMode last_vis_mode_ {VisualizationMode::kNone};
-		//SamplingStrategy last_sampling_strategy_ {SamplingStrategy::kCosine};
-		//std::vector<ColorRgba> accumulation_buffer_ {};
+		VisualizationMode last_vis_mode_ {VisualizationMode::kNone};
+		SamplingStrategy last_sampling_strategy_ {SamplingStrategy::kCosine};
+		std::vector<ColorRgba> accumulation_buffer_ {};
 
 		struct HemiSphereSample
 		{
@@ -43,7 +43,10 @@ namespace gfx
 			float pdf {};
 		};
 
-		void RenderPixel(uint32_t screen_x, uint32_t screen_y) const;
+		[[nodiscard]] bool IsDebugView() const
+		{ return gfx::IsDebugView(context_->debug_params.visualization_mode); }
+
+		void RenderPixel(uint32_t screen_x, uint32_t screen_y);
 
 		[[nodiscard]] Ray GetRay(uint32_t screen_x, uint32_t screen_y) const;
 
@@ -72,7 +75,13 @@ namespace gfx
 		  uint32_t pixel_index
 		) const;
 
-		void WriteColor(uint32_t pixel_index, ColorRgba color) const;
+		void WriteColor(uint32_t pixel_index, const ColorRgba& color);
+
+		void WriteColorToScreen(uint32_t pixel_index, const ColorRgba& color) const;
+
+		void WriteColorToBuffer(uint32_t pixel_index, const ColorRgba& color);
+
+		void WriteColorFromBufferToScreen(uint32_t pixel_index) const;
 
 		[[nodiscard]] float
 		TraceAo(const ShadingInput& shading_input, uint32_t pixel_index) const;

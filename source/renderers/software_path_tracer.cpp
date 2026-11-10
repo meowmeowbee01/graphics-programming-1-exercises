@@ -55,6 +55,26 @@ SoftwarePathTracer::~SoftwarePathTracer() = default;
 void SoftwarePathTracer::Render()
 {
 	assert(context_ && "Context not available!");
+	const auto vis_mode {context_->debug_params.visualization_mode};
+	const auto sampling {context_->debug_params.sampling_strategy};
+	const auto total_pixels {
+	  context_->surface_info.width * context_->surface_info.height
+	};
+	const auto scene_changed {
+	  context_->scene_manager->GetActiveScene()->scene_changed
+	};
+	const auto buffer_wrong_size {accumulation_buffer_.size() != total_pixels};
+	const auto vis_changed {vis_mode != last_vis_mode_};
+	const auto sampling_changed {sampling != last_sampling_strategy_};
+	auto& sample_count {context_->debug_params.accumulated_samples};
+	if (scene_changed || buffer_wrong_size || vis_changed || sampling_changed)
+	{
+		sample_count = 0;
+		accumulation_buffer_.assign(total_pixels, ColorRgba::Black());
+		last_vis_mode_ = vis_mode;
+		last_sampling_strategy_ = sampling;
+	}
+	if (sample_count >= context_->debug_params.max_samples) return;
 #ifndef GFX_DEBUG
 	#pragma omp parallel for schedule(auto) default(none) collapse(2)
 #endif
@@ -65,13 +85,14 @@ void SoftwarePathTracer::Render()
 		  uint32_t screen_x = 0; screen_x < context_->surface_info.width; ++screen_x
 		)
 			RenderPixel(screen_x, screen_y);
+	if (!IsDebugView()) ++sample_count;
 }
 
 //private
 void SoftwarePathTracer::RenderPixel(
   const uint32_t screen_x,
   const uint32_t screen_y
-) const
+)
 {
 	const auto ray {GetRay(screen_x, screen_y)};
 	const auto pixel_index {GetPixelIndex(screen_x, screen_y)};
@@ -80,18 +101,17 @@ void SoftwarePathTracer::RenderPixel(
 	{
 		const auto shading_input {ConstructShadingInput(hit_record)};
 		auto color {GetLinearColor(hit_record, shading_input, pixel_index)};
-		if (IsToneMapped(context_->debug_params.visualization_mode))
-		{
-			color = color.Tonemap(context_->debug_params.tone_map_operator).ToSrgb();
-			color.Clamp();
-		}
 		WriteColor(pixel_index, color);
 	}
 	else
-		WriteColor(
-		  pixel_index,
+	{
+		const auto color {
 		  context_->scene_manager->GetActiveScene()->background_color
-		);
+		};
+		IsDebugView() ? WriteColorToScreen(pixel_index, color)
+		              : WriteColorToBuffer(pixel_index, color);
+	}
+	if (!IsDebugView()) WriteColorFromBufferToScreen(pixel_index);
 }
 
 Ray SoftwarePathTracer::GetRay(
@@ -430,7 +450,16 @@ ColorRgba SoftwarePathTracer::GetLinearColor(
 
 void SoftwarePathTracer::WriteColor(
   const uint32_t pixel_index,
-  const ColorRgba color
+  const ColorRgba& color
+)
+{
+	IsDebugView() ? WriteColorToScreen(pixel_index, color)
+	              : WriteColorToBuffer(pixel_index, color);
+}
+
+void SoftwarePathTracer::WriteColorToScreen(
+  const uint32_t pixel_index,
+  const ColorRgba& color
 ) const
 {
 	context_->surface_info.pixel_buffer[pixel_index] = SDL_MapRGB(
@@ -440,6 +469,28 @@ void SoftwarePathTracer::WriteColor(
 	  static_cast<uint8_t>(color.g * 255.f),
 	  static_cast<uint8_t>(color.b * 255.f)
 	);
+}
+
+void SoftwarePathTracer::WriteColorToBuffer(
+  const uint32_t pixel_index,
+  const ColorRgba& color
+)
+{ accumulation_buffer_.at(pixel_index) += color; }
+
+void SoftwarePathTracer::WriteColorFromBufferToScreen(
+  const uint32_t pixel_index
+) const
+{
+	const auto inv_frames {
+	  1.f / (static_cast<float>(context_->debug_params.accumulated_samples) + 1.f)
+	};
+	auto color {accumulation_buffer_.at(pixel_index) * inv_frames};
+	if (!IsDebugView())
+	{
+		color = color.Tonemap(context_->debug_params.tone_map_operator).ToSrgb();
+		color.Clamp();
+	}
+	WriteColorToScreen(pixel_index, color);
 }
 
 float SoftwarePathTracer::TraceAo(
@@ -525,7 +576,8 @@ SoftwarePathTracer::HemiSphereSample SoftwarePathTracer::CosineHemiSphereSample(
 	return {.direction = LocalToWorld(local, normal), .pdf = pdf};
 }
 
-Vector2 SoftwarePathTracer::GenerateSubPixelJitter(uint32_t pixel_index) const
+Vector2
+SoftwarePathTracer::GenerateSubPixelJitter(const uint32_t pixel_index) const
 {
 	const auto frame {context_->debug_params.accumulated_samples};
 	const auto frame_hash {LowBias32(frame + 0x9e3779b9u)};
