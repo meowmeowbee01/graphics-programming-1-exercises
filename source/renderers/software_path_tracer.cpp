@@ -15,16 +15,16 @@ namespace
 {
 	uint32_t LowBias32(uint32_t h)
 	{
-		h ^= h >> 16;
+		h ^= h >> 16u;
 		h *= 0x7feb352du;
-		h ^= h >> 15;
+		h ^= h >> 15u;
 		h *= 0x846ca68bu;
-		h ^= h >> 16;
+		h ^= h >> 16u;
 		return h;
 	}
 
 	float HashToFloat(const uint32_t h)
-	{ return static_cast<float>(h >> 8) * (1.f / 16777216.f); }
+	{ return static_cast<float>(h >> 8u) * (1.f / 16777216.f); }
 
 	Vector3 LocalToWorld(const Vector3& local_direction, const Vector3& normal)
 	{
@@ -85,7 +85,7 @@ void SoftwarePathTracer::Render()
 		  uint32_t screen_x = 0; screen_x < context_->surface_info.width; ++screen_x
 		)
 			RenderPixel(screen_x, screen_y);
-	if (!IsDebugView()) ++sample_count;
+	if (!IsDebugView() && !context_->debug_params.sampling_paused) ++sample_count;
 }
 
 //private
@@ -96,6 +96,8 @@ void SoftwarePathTracer::RenderPixel(
 {
 	const auto ray {GetRay(screen_x, screen_y)};
 	const auto pixel_index {GetPixelIndex(screen_x, screen_y)};
+	//readability
+	//ReSharper disable once CppTooWideScopeInitStatement
 	RayHitRecord hit_record {};
 	if (HitTest(ray, hit_record))
 	{
@@ -183,6 +185,8 @@ bool SoftwarePathTracer::HitTest(
 		const auto& primitive {
 		  *scene.primitives_factory.Get(object.primitive_index)
 		};
+		//readability
+		//ReSharper disable once CppTooWideScopeInitStatement
 		RayHitRecord hit_record {.object_index = static_cast<uint32_t>(i)};
 		if (
 		  HitTestPrimitive(
@@ -364,6 +368,8 @@ ColorRgba SoftwarePathTracer::DirectIllumination(
 		    ? std::numeric_limits<float>::max()
 		    : light_distance
 		};
+		//readability
+		//ReSharper disable once CppTooWideScopeInitStatement
 		RayHitRecord shadow_hit_record {};
 		if (HitTest(shadow_ray, shadow_hit_record, true)) continue;
 		ShadingInput complete_shading_input {shading_input};
@@ -475,14 +481,19 @@ void SoftwarePathTracer::WriteColorToBuffer(
   const uint32_t pixel_index,
   const ColorRgba& color
 )
-{ accumulation_buffer_.at(pixel_index) += color; }
+{
+	if (!context_->debug_params.sampling_paused)
+		accumulation_buffer_.at(pixel_index) += color;
+}
 
 void SoftwarePathTracer::WriteColorFromBufferToScreen(
   const uint32_t pixel_index
 ) const
 {
 	const auto inv_frames {
-	  1.f / (static_cast<float>(context_->debug_params.accumulated_samples) + 1.f)
+	  1.f /
+	  (static_cast<float>(context_->debug_params.accumulated_samples) +
+	   static_cast<float>(!context_->debug_params.sampling_paused))
 	};
 	auto color {accumulation_buffer_.at(pixel_index) * inv_frames};
 	if (!IsDebugView())
