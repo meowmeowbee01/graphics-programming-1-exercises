@@ -11,4 +11,6 @@ Checks:
   performance-*
   portability-*
   readability-*
-  clang-diagnostic-*'
+  clang-diagnostic-*
+  
+  -*-avoid-magic-numbers'
