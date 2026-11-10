@@ -32,12 +32,7 @@ namespace gfx
 	private:
 		void RenderPixel(uint32_t screen_x, uint32_t screen_y) const;
 
-		[[nodiscard]] Ray GetRay(
-		  uint32_t screen_x,
-		  uint32_t screen_y,
-		  uint32_t screen_width,
-		  uint32_t screen_height
-		) const;
+		[[nodiscard]] Ray GetRay(uint32_t screen_x, uint32_t screen_y) const;
 
 		bool HitTest(
 		  const Ray& ray,
@@ -50,7 +45,8 @@ namespace gfx
 
 		static ColorRgba
 		CalculateRadiance(const Light& light, const Vector3& world_position);
-		ColorRgba DirectIllumination(
+
+		[[nodiscard]] ColorRgba DirectIllumination(
 		  const ShadingInput& shading_input,
 		  const Scene& scene,
 		  const Material& material,
@@ -59,11 +55,27 @@ namespace gfx
 
 		[[nodiscard]] ColorRgba GetColor(
 		  const RayHitRecord& hit_record,
-		  const ShadingInput& shading_input
+		  const ShadingInput& shading_input,
+		  uint32_t pixel_index
 		) const;
 
 		void
 		WriteColor(uint32_t screen_x, uint32_t screen_y, ColorRgba color) const;
+
+		const uint32_t ao_sample_count_ {32};
+		const float ao_radius_ {10.f};
+
+		[[nodiscard]] float
+		TraceAo(const ShadingInput& shading_input, uint32_t pixel_index) const;
+
+		struct HemiSphereSample
+		{
+			Vector3 direction {};
+			float pdf {};
+		};
+
+		static HemiSphereSample
+		UniformHemiSphereSample(const Vector3& normal, uint32_t seed);
 	};
 } //namespace gfx
 #endif //SOFTWARE_PATH_TRACER_HEADER

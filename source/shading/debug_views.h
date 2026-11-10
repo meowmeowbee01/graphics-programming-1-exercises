@@ -24,9 +24,10 @@ namespace gfx
 		kNormals,
 		kAlbedo,
 		kDepth,
-		kUV,
+		kUv,
 		kMetallicRoughness,
 		kDirectOnly,
+		kAo,
 		kBounceCount,
 		kMax,
 	};
@@ -89,9 +90,10 @@ namespace gfx
 		case VisualizationMode::kNormals: return "Normals";
 		case VisualizationMode::kAlbedo: return "Albedo";
 		case VisualizationMode::kDepth: return "Depth";
-		case VisualizationMode::kUV: return "UV";
+		case VisualizationMode::kUv: return "UV";
 		case VisualizationMode::kMetallicRoughness: return "Metallic/Roughness";
 		case VisualizationMode::kDirectOnly: return "Direct Only";
+		case VisualizationMode::kAo: return "Ao";
 		case VisualizationMode::kBounceCount: return "Bounce Count";
 		case VisualizationMode::kMax: return "";
 		}

@@ -7,6 +7,7 @@
 #include <scenes.h>
 #include <software_path_tracer.h>
 
+#include <iostream>
 #include <ranges>
 using namespace gfx;
 
@@ -24,6 +25,18 @@ namespace
 
 	float HashToFloat(const uint32_t h)
 	{ return static_cast<float>(h >> 8) * (1.f / 16777216.f); }
+
+	Vector3 LocalToWorld(const Vector3& local_direction, const Vector3& normal)
+	{
+		const auto helper {
+		  std::abs(normal.x) > .9f ? Vector3::UnitY() : Vector3::UnitX()
+		};
+		const auto t {Vector3::Cross(normal, helper).Normalized()};
+		const auto b {Vector3::Cross(normal, t)};
+		return {
+		  t * local_direction.x + b * local_direction.y + normal * local_direction.z
+		};
+	}
 } //namespace
 
 //=============================================================================
@@ -60,17 +73,13 @@ void SoftwarePathTracer::RenderPixel(
   const uint32_t screen_y
 ) const
 {
-	const auto ray {GetRay(
-	  screen_x,
-	  screen_y,
-	  context_->surface_info.width,
-	  context_->surface_info.height
-	)};
+	const auto ray {GetRay(screen_x, screen_y)};
 	RayHitRecord hit_record {};
 	if (HitTest(ray, hit_record))
 	{
 		const auto shading_input {ConstructShadingInput(hit_record)};
-		auto color {GetColor(hit_record, shading_input)};
+		const auto pixel_index {screen_x + screen_y * context_->surface_info.width};
+		const auto color {GetColor(hit_record, shading_input, pixel_index)};
 		WriteColor(screen_x, screen_y, color);
 	}
 	else
@@ -83,11 +92,11 @@ void SoftwarePathTracer::RenderPixel(
 
 Ray SoftwarePathTracer::GetRay(
   const uint32_t screen_x,
-  const uint32_t screen_y,
-  const uint32_t screen_width,
-  const uint32_t screen_height
+  const uint32_t screen_y
 ) const
 {
+	const uint32_t screen_width {context_->surface_info.width};
+	const uint32_t screen_height {context_->surface_info.height};
 	const float aspect_ratio {
 	  static_cast<float>(screen_width) / static_cast<float>(screen_height)
 	};
@@ -340,7 +349,8 @@ ColorRgba SoftwarePathTracer::DirectIllumination(
 
 ColorRgba SoftwarePathTracer::GetColor(
   const RayHitRecord& hit_record,
-  const ShadingInput& shading_input
+  const ShadingInput& shading_input,
+  const uint32_t pixel_index
 ) const
 {
 	const auto& scene {*context_->scene_manager->GetActiveScene()};
@@ -377,7 +387,7 @@ ColorRgba SoftwarePathTracer::GetColor(
 		return ColorRgba {0.f, surface.roughness, surface.metallic};
 	}
 	break;
-	case VisualizationMode::kUV:
+	case VisualizationMode::kUv:
 	{
 		if (!shading_input.texture_coordinates.has_value()) return ColorRgba {1.f};
 		return ColorRgba {
@@ -397,12 +407,18 @@ ColorRgba SoftwarePathTracer::GetColor(
 		return color;
 	}
 	break;
+	case VisualizationMode::kAo:
+	{
+		ColorRgba color {TraceAo(shading_input, pixel_index)};
+		color.Clamp();
+		return color;
+	}
+	break;
 	default:
 	{
-		ColorRgba color =
-		  DirectIllumination(shading_input, scene, material, surface)
-		    .Tonemap(context_->debug_params.tone_map_operator)
-		    .ToSrgb();
+		ColorRgba color {DirectIllumination(shading_input, scene, material, surface)
+		                   .Tonemap(context_->debug_params.tone_map_operator)
+		                   .ToSrgb()};
 		color.Clamp();
 		return color;
 	}
@@ -426,4 +442,54 @@ void SoftwarePathTracer::WriteColor(
 	  static_cast<uint8_t>(color.g * 255.f),
 	  static_cast<uint8_t>(color.b * 255.f)
 	);
+}
+
+float SoftwarePathTracer::TraceAo(
+  const ShadingInput& shading_input,
+  const uint32_t pixel_index
+) const
+{
+	float visibility_sum {0.f};
+	for (uint32_t s {0}; s < ao_sample_count_; ++s)
+	{
+		const uint32_t ao_seed {pixel_index * 1973u + s * 6133u};
+		const auto sample {
+		  UniformHemiSphereSample(shading_input.world_normal, ao_seed)
+		};
+		const Ray ao_ray {
+		  .origin = shading_input.shadow_origin,
+		  .direction = sample.direction,
+		  .min = 1e-3f,
+		  .max = ao_radius_
+		};
+		if (RayHitRecord ao_hit {}; HitTest(ao_ray, ao_hit, true)) continue;
+		const auto cos_theta {
+		  std::max(0.f, Vector3::Dot(sample.direction, shading_input.world_normal))
+		};
+		const float f {cos_theta / std::numbers::pi_v<float>};
+		const auto weighted {f / sample.pdf};
+		if (weighted - 2.f * cos_theta > 1e3f) std::cout << "weird";
+		if (sample.pdf > 0.f) visibility_sum += weighted;
+	}
+	return visibility_sum / static_cast<float>(ao_sample_count_);
+}
+
+SoftwarePathTracer::HemiSphereSample
+SoftwarePathTracer::UniformHemiSphereSample(
+  const Vector3& normal,
+  const uint32_t seed
+)
+{
+	const auto h1 {LowBias32(seed)};
+	const auto u1 {HashToFloat(h1)};
+	const auto h2 {LowBias32(h1)};
+	const auto u2 {HashToFloat(h2)};
+	const auto cos_theta {u2};
+	const auto sin_theta {std::sqrtf(1.f - u2 * u2)};
+	const auto phi {u1 * std::numbers::pi_v<float> * 2.f};
+	const auto cos_phi {std::cosf(phi)};
+	const auto sin_phi {std::sinf(phi)};
+	const Vector3 local {sin_theta * cos_phi, sin_theta * sin_phi, cos_theta};
+	constexpr auto pdf {1.f / (2.f * std::numbers::pi_v<float>)};
+	return {.direction = LocalToWorld(local, normal), .pdf = pdf};
 }
