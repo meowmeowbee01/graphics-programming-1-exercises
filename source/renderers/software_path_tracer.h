@@ -30,8 +30,12 @@ namespace gfx
 		void Render() override;
 
 	private:
-		const uint32_t ao_sample_count_ {1};
+		const uint32_t ao_sample_count_ {32};
 		const float ao_radius_ {10.f};
+
+		//VisualizationMode last_vis_mode_ {VisualizationMode::kNone};
+		//SamplingStrategy last_sampling_strategy_ {SamplingStrategy::kCosine};
+		//std::vector<ColorRgba> accumulation_buffer_ {};
 
 		struct HemiSphereSample
 		{
@@ -62,14 +66,13 @@ namespace gfx
 		  const SurfaceProperties& surface
 		) const;
 
-		[[nodiscard]] ColorRgba GetColor(
+		[[nodiscard]] ColorRgba GetLinearColor(
 		  const RayHitRecord& hit_record,
 		  const ShadingInput& shading_input,
 		  uint32_t pixel_index
 		) const;
 
-		void
-		WriteColor(uint32_t screen_x, uint32_t screen_y, ColorRgba color) const;
+		void WriteColor(uint32_t pixel_index, ColorRgba color) const;
 
 		[[nodiscard]] float
 		TraceAo(const ShadingInput& shading_input, uint32_t pixel_index) const;
@@ -82,6 +85,11 @@ namespace gfx
 
 		static HemiSphereSample
 		CosineHemiSphereSample(const Vector3& normal, uint32_t seed);
+
+		[[nodiscard]] Vector2 GenerateSubPixelJitter(uint32_t pixel_index) const;
+
+		[[nodiscard]] uint32_t
+		GetPixelIndex(uint32_t screen_x, uint32_t screen_y) const;
 	};
 } //namespace gfx
 #endif //SOFTWARE_PATH_TRACER_HEADER

@@ -74,18 +74,22 @@ void SoftwarePathTracer::RenderPixel(
 ) const
 {
 	const auto ray {GetRay(screen_x, screen_y)};
+	const auto pixel_index {GetPixelIndex(screen_x, screen_y)};
 	RayHitRecord hit_record {};
 	if (HitTest(ray, hit_record))
 	{
 		const auto shading_input {ConstructShadingInput(hit_record)};
-		const auto pixel_index {screen_x + screen_y * context_->surface_info.width};
-		const auto color {GetColor(hit_record, shading_input, pixel_index)};
-		WriteColor(screen_x, screen_y, color);
+		auto color {GetLinearColor(hit_record, shading_input, pixel_index)};
+		if (IsToneMapped(context_->debug_params.visualization_mode))
+		{
+			color = color.Tonemap(context_->debug_params.tone_map_operator).ToSrgb();
+			color.Clamp();
+		}
+		WriteColor(pixel_index, color);
 	}
 	else
 		WriteColor(
-		  screen_x,
-		  screen_y,
+		  pixel_index,
 		  context_->scene_manager->GetActiveScene()->background_color
 		);
 }
@@ -105,9 +109,14 @@ Ray SoftwarePathTracer::GetRay(
 	  std::numbers::pi_v<float> / 180.f * camera.GetFovAngle()
 	};
 	const float fov {std::tanf(fov_radians / 2)};
+	constexpr auto jitter {true};
+	const auto offset {
+	  jitter ? GenerateSubPixelJitter(GetPixelIndex(screen_x, screen_y))
+	         : Vector2 {.5f, .5f}
+	};
 	const float ndc_x {
 	  (2.f *
-	     ((static_cast<float>(screen_x) + 0.5f) /
+	     ((static_cast<float>(screen_x) + offset.x) /
 	      static_cast<float>(screen_width)) -
 	   1.f) *
 	  aspect_ratio *
@@ -116,7 +125,7 @@ Ray SoftwarePathTracer::GetRay(
 	const float ndc_y {
 	  (1.f -
 	   2.f *
-	     ((static_cast<float>(screen_y) + 0.5f) /
+	     ((static_cast<float>(screen_y) + offset.y) /
 	      static_cast<float>(screen_height))) *
 	  fov
 	};
@@ -347,7 +356,7 @@ ColorRgba SoftwarePathTracer::DirectIllumination(
 	return color;
 }
 
-ColorRgba SoftwarePathTracer::GetColor(
+ColorRgba SoftwarePathTracer::GetLinearColor(
   const RayHitRecord& hit_record,
   const ShadingInput& shading_input,
   const uint32_t pixel_index
@@ -397,45 +406,33 @@ ColorRgba SoftwarePathTracer::GetColor(
 		};
 	}
 	break;
-	case VisualizationMode::kDirectOnly:
-	{
-		ColorRgba color =
-		  DirectIllumination(shading_input, scene, material, surface)
-		    .Tonemap(context_->debug_params.tone_map_operator)
-		    .ToSrgb();
-		color.Clamp();
-		return color;
-	}
-	break;
 	case VisualizationMode::kAo:
 	{
-		ColorRgba color {TraceAo(shading_input, pixel_index)};
-		color = color.Tonemap(context_->debug_params.tone_map_operator).ToSrgb();
-		color.Clamp();
-		return color;
+		return ColorRgba {TraceAo(shading_input, pixel_index)};
+	}
+	break;
+	case VisualizationMode::kDirectOnly:
+	{
+		return ColorRgba {
+		  DirectIllumination(shading_input, scene, material, surface)
+		};
 	}
 	break;
 	default:
 	{
-		ColorRgba color {DirectIllumination(shading_input, scene, material, surface)
-		                   .Tonemap(context_->debug_params.tone_map_operator)
-		                   .ToSrgb()};
-		color.Clamp();
-		return color;
+		return ColorRgba {
+		  DirectIllumination(shading_input, scene, material, surface)
+		};
 	}
 	break;
 	}
 }
 
 void SoftwarePathTracer::WriteColor(
-  const uint32_t screen_x,
-  const uint32_t screen_y,
+  const uint32_t pixel_index,
   const ColorRgba color
 ) const
 {
-	const uint32_t pixel_index {
-	  screen_x + screen_y * context_->surface_info.width
-	};
 	context_->surface_info.pixel_buffer[pixel_index] = SDL_MapRGB(
 	  context_->surface_info.pixel_format_details,
 	  nullptr,
@@ -453,7 +450,11 @@ float SoftwarePathTracer::TraceAo(
 	float visibility_sum {0.f};
 	for (uint32_t s {0}; s < ao_sample_count_; ++s)
 	{
-		const uint32_t ao_seed {pixel_index * 1973u + s * 6133u};
+		const uint32_t ao_seed {
+		  pixel_index * 1973u +
+		  s * 6133u +
+		  context_->debug_params.accumulated_samples * 2654435761u
+		};
 		const auto [direction, pdf] {
 		  GetHemiSphereSample(shading_input.world_normal, ao_seed)
 		};
@@ -491,10 +492,10 @@ SoftwarePathTracer::UniformHemiSphereSample(
   const uint32_t seed
 )
 {
-	const auto h1 {LowBias32(seed)};
-	const auto u1 {HashToFloat(h1)};
-	const auto h2 {LowBias32(h1)};
-	const auto u2 {HashToFloat(h2)};
+	auto h {LowBias32(seed)};
+	const auto u1 {HashToFloat(h)};
+	h = LowBias32(h);
+	const auto u2 {HashToFloat(h)};
 	const auto cos_theta {u2};
 	const auto sin_theta {std::sqrtf(1.f - u2 * u2)};
 	const auto phi {u1 * std::numbers::pi_v<float> * 2.f};
@@ -510,10 +511,10 @@ SoftwarePathTracer::HemiSphereSample SoftwarePathTracer::CosineHemiSphereSample(
   const uint32_t seed
 )
 {
-	const auto h1 {LowBias32(seed)};
-	const auto u1 {HashToFloat(h1)};
-	const auto h2 {LowBias32(h1)};
-	const auto u2 {HashToFloat(h2)};
+	auto h {LowBias32(seed)};
+	const auto u1 {HashToFloat(h)};
+	h = LowBias32(h);
+	const auto u2 {HashToFloat(h)};
 	const auto cos_theta {std::sqrtf(1.f - u2)};
 	const auto sin_theta {std::sqrtf(u2)};
 	const auto phi {u1 * std::numbers::pi_v<float> * 2.f};
@@ -523,3 +524,20 @@ SoftwarePathTracer::HemiSphereSample SoftwarePathTracer::CosineHemiSphereSample(
 	const auto pdf {cos_theta / std::numbers::pi_v<float>};
 	return {.direction = LocalToWorld(local, normal), .pdf = pdf};
 }
+
+Vector2 SoftwarePathTracer::GenerateSubPixelJitter(uint32_t pixel_index) const
+{
+	const auto frame {context_->debug_params.accumulated_samples};
+	const auto frame_hash {LowBias32(frame + 0x9e3779b9u)};
+	auto h {LowBias32(pixel_index ^ frame_hash)};
+	const auto jx {HashToFloat(h)};
+	h = LowBias32(h);
+	const auto jy {HashToFloat(h)};
+	return Vector2 {jx, jy};
+}
+
+uint32_t SoftwarePathTracer::GetPixelIndex(
+  const uint32_t screen_x,
+  const uint32_t screen_y
+) const
+{ return screen_x + context_->surface_info.width * screen_y; }
