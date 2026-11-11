@@ -88,6 +88,14 @@ namespace gfx
 			a = std::max(0.0f, std::min(a, 1.0f));
 		}
 
+		[[nodiscard]] bool IsFinite() const
+		{
+			return std::isfinite(r) &&
+			  std::isfinite(g) &&
+			  std::isfinite(b) &&
+			  std::isfinite(a);
+		}
+
 		void MaxToOne()
 		{
 			const float alpha {a};
@@ -177,15 +185,15 @@ namespace gfx
 		{
 			const float srgb_r {
 			  r <= 0.0031308f ? r * 12.92f
-			                    : 1.055f * std::pow(r, 1.0f / 2.4f) - 0.055f
+			                  : 1.055f * std::pow(r, 1.0f / 2.4f) - 0.055f
 			};
 			const float srgb_g {
 			  g <= 0.0031308f ? g * 12.92f
-			                    : 1.055f * std::pow(g, 1.0f / 2.4f) - 0.055f
+			                  : 1.055f * std::pow(g, 1.0f / 2.4f) - 0.055f
 			};
 			const float srgb_b {
 			  b <= 0.0031308f ? b * 12.92f
-			                    : 1.055f * std::pow(b, 1.0f / 2.4f) - 0.055f
+			                  : 1.055f * std::pow(b, 1.0f / 2.4f) - 0.055f
 			};
 			return {srgb_r, srgb_g, srgb_b, a};
 		}

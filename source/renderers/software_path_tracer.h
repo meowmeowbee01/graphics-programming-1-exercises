@@ -73,13 +73,6 @@ namespace gfx
 			);
 		}
 
-		const uint32_t ao_sample_count_ {1};
-		const float ao_radius_ {10.f};
-
-		VisualizationMode last_vis_mode_ {VisualizationMode::kNone};
-		SamplingStrategy last_sampling_strategy_ {SamplingStrategy::kCosine};
-		std::vector<ColorRgba> accumulation_buffer_ {};
-
 		[[nodiscard]] bool IsAccumulatedVisMode() const
 		{
 			return gfx::IsAccumulatedVisMode(
@@ -90,10 +83,44 @@ namespace gfx
 		[[nodiscard]] bool IsBouncedVisMode() const
 		{ return gfx::IsBouncedVisMode(context_->debug_params.visualization_mode); }
 
+		[[nodiscard]] uint32_t
+		GetPixelIndex(const uint32_t screen_x, const uint32_t screen_y) const
+		{ return screen_x + context_->surface_info.width * screen_y; }
+
+		[[nodiscard]] static Vector2 GenerateSubPixelJitter(uint32_t& hash_state)
+		{ return {NextFloat(hash_state), NextFloat(hash_state)}; }
+
+		[[nodiscard]] HemiSphereSample
+		GetHemiSphereSample(const Vector3& normal, uint32_t& hash_state) const
+		{
+			switch (context_->debug_params.sampling_strategy)
+			{
+			case SamplingStrategy::kUniform:
+				return UniformHemiSphereSample(normal, hash_state);
+			default: return CosineHemiSphereSample(normal, hash_state);
+			}
+		}
+
+		const uint32_t ao_sample_count_ {1};
+		const float ao_radius_ {10.f};
+
+		VisualizationMode last_vis_mode_ {VisualizationMode::kNone};
+		SamplingStrategy last_sampling_strategy_ {SamplingStrategy::kCosine};
+		std::vector<ColorRgba> accumulation_buffer_ {};
+
+		struct BounceSample
+		{
+			Vector3 direction {};
+			ColorRgba weight {ColorRgba::Black()};
+		};
+
 		void RenderPixel(uint32_t screen_x, uint32_t screen_y);
 
 		[[nodiscard]] Ray
 		GetRay(uint32_t screen_x, uint32_t screen_y, uint32_t& hash_state) const;
+
+		ColorRgba
+		TracePath(const Ray& ray, uint32_t& hash_state, int max_bounces = 8) const;
 
 		bool HitTest(
 		  const Ray& ray,
@@ -104,8 +131,20 @@ namespace gfx
 		[[nodiscard]] ShadingInput
 		ConstructShadingInput(const RayHitRecord& hit_record) const;
 
-		static ColorRgba
-		CalculateRadiance(const Light& light, const Vector3& world_position);
+		static void ConstructShadingInputFromMesh(
+		  const RayHitRecord& hit_record,
+		  ShadingInput& shading_input,
+		  const TriangleMesh& mesh
+		);
+
+		[[nodiscard]] ColorRgba GetLinearColor(
+		  const RayHitRecord& hit_record,
+		  const ShadingInput& shading_input,
+		  uint32_t& hash_state
+		) const;
+
+		[[nodiscard]] float
+		TraceAo(const ShadingInput& shading_input, uint32_t& hash_state) const;
 
 		[[nodiscard]] ColorRgba DirectIllumination(
 		  const ShadingInput& shading_input,
@@ -113,11 +152,8 @@ namespace gfx
 		  const SurfaceProperties& surface
 		) const;
 
-		[[nodiscard]] ColorRgba GetLinearColor(
-		  const RayHitRecord& hit_record,
-		  const ShadingInput& shading_input,
-		  uint32_t& hash_state
-		) const;
+		static ColorRgba
+		CalculateRadiance(const Light& light, const Vector3& world_position);
 
 		void WriteColor(uint32_t pixel_index, const ColorRgba& color);
 
@@ -126,26 +162,6 @@ namespace gfx
 		void WriteColorToBuffer(uint32_t pixel_index, const ColorRgba& color);
 
 		void WriteColorFromBufferToScreen(uint32_t pixel_index) const;
-
-		[[nodiscard]] float
-		TraceAo(const ShadingInput& shading_input, uint32_t& hash_state) const;
-
-		struct BounceSample
-		{
-			Vector3 direction {};
-			ColorRgba weight {ColorRgba::Black()};
-		};
-
-		ColorRgba
-		TracePath(const Ray& ray, uint32_t& hash_state, int max_bounces = 8) const;
-
-		[[nodiscard]] HemiSphereSample
-		GetHemiSphereSample(const Vector3& normal, uint32_t& hash_state) const;
-
-		[[nodiscard]] static Vector2 GenerateSubPixelJitter(uint32_t& hash_state);
-
-		[[nodiscard]] uint32_t
-		GetPixelIndex(uint32_t screen_x, uint32_t screen_y) const;
 	};
 } //namespace gfx
 #endif //SOFTWARE_PATH_TRACER_HEADER

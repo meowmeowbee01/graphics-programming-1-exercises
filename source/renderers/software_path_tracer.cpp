@@ -76,13 +76,7 @@ void SoftwarePathTracer::RenderPixel(
 	  IsBouncedVisMode() ? TracePath(ray, hash_state)
 	                     : TracePath(ray, hash_state, 1)
 	};
-	if (
-	  std::isfinite(color.r) &&
-	  std::isfinite(color.g) &&
-	  std::isfinite(color.b) &&
-	  std::isfinite(color.a)
-	)
-		WriteColor(pixel_index, color);
+	if (color.IsFinite()) WriteColor(pixel_index, color);
 	else WriteColor(pixel_index, ColorRgba::Black());
 	if (IsAccumulatedVisMode()) WriteColorFromBufferToScreen(pixel_index);
 }
@@ -136,6 +130,48 @@ Ray SoftwarePathTracer::GetRay(
 	};
 }
 
+ColorRgba SoftwarePathTracer::TracePath(
+  const Ray& ray,
+  uint32_t& hash_state,
+  int max_bounces
+) const
+{
+	auto accumulated_color {ColorRgba::Black()};
+	auto throughput {ColorRgba::White()};
+	Ray current_ray {ray};
+	int bounces {0};
+	for (; bounces < max_bounces; ++bounces)
+	{
+		RayHitRecord hit_record {};
+		if (!HitTest(current_ray, hit_record))
+		{
+			accumulated_color += GetScene().background_color;
+			break;
+		}
+		auto shading_input {ConstructShadingInput(hit_record)};
+		const auto& mat {GetMaterial(hit_record)};
+		const auto surface {GetSurfaceProperties(mat, shading_input)};
+		shading_input.world_normal = surface.shading_normal;
+		auto color {GetLinearColor(hit_record, shading_input, hash_state)};
+		accumulated_color += throughput * color;
+		const auto [direction, pdf] {
+		  GetHemiSphereSample(shading_input.world_normal, hash_state)
+		};
+		const auto n_dot_l {Vector3::Dot(shading_input.world_normal, direction)};
+		if (n_dot_l <= 0.f || pdf < 1e-6f) break;
+		shading_input.light_direction = direction;
+		const auto brdf {mat.Shade(shading_input, surface)};
+		const BounceSample bounce_sample {
+		  .direction = direction,
+		  .weight = brdf * n_dot_l / pdf
+		};
+		throughput *= bounce_sample.weight;
+		current_ray =
+		  Ray {.origin = shading_input.shadow_origin, .direction = direction};
+	}
+	return accumulated_color;
+}
+
 bool SoftwarePathTracer::HitTest(
   const Ray& ray,
   RayHitRecord& closest_hit_record,
@@ -153,8 +189,8 @@ bool SoftwarePathTracer::HitTest(
 		};
 		transformed_ray.max = std::min(ray.max, closest_hit_record.t);
 		const auto& primitive {GetPrimitive(object.primitive_index)};
-		RayHitRecord hit_record {.object_index = static_cast<uint32_t>(i)};
 		if (
+		  RayHitRecord hit_record {.object_index = static_cast<uint32_t>(i)};
 		  HitTestPrimitive(
 		    primitive,
 		    transformed_ray,
@@ -183,164 +219,126 @@ SoftwarePathTracer::ConstructShadingInput(const RayHitRecord& hit_record) const
 	const auto& primitive {GetPrimitive(hit_record)};
 	ShadingInput shading_input {};
 	shading_input.view_direction = -hit_record.ray.direction;
-	auto& point {shading_input.world_position};
-	auto& normal {shading_input.world_normal};
-	auto& shadow_origin {shading_input.shadow_origin};
-	point = hit_record.ray.origin + hit_record.ray.direction * hit_record.t;
+	shading_input.world_position =
+	  hit_record.ray.origin + hit_record.ray.direction * hit_record.t;
 	switch (primitive.type)
 	{
 	case PrimitiveType::kSphere:
 	{
 		const auto& sphere {dynamic_cast<const Sphere&>(primitive)};
-		normal = (point - sphere.origin).Normalized();
-		shadow_origin = point + normal * 1e-3f;
+		shading_input.world_normal =
+		  (shading_input.world_position - sphere.origin).Normalized();
+		shading_input.shadow_origin =
+		  shading_input.world_position + shading_input.world_normal * 1e-3f;
 	}
 	break;
 	case PrimitiveType::kPlane:
 	{
 		const auto& plane {dynamic_cast<const Plane&>(primitive)};
-		normal = plane.normal;
-		shadow_origin = point + normal * 1e-3f;
+		shading_input.world_normal = plane.normal;
+		shading_input.shadow_origin =
+		  shading_input.world_position + shading_input.world_normal * 1e-3f;
 	}
 	break;
 	case PrimitiveType::kTriangle:
 	{
 		const auto& triangle {dynamic_cast<const Triangle&>(primitive)};
-		normal = triangle.normal;
-		shadow_origin = point + normal * 1e-3f;
+		shading_input.world_normal = triangle.normal;
+		shading_input.shadow_origin =
+		  shading_input.world_position + shading_input.world_normal * 1e-3f;
 	}
 	break;
 	case PrimitiveType::kTriangleMesh:
 	{
-		assert(hit_record.vertex_indices.has_value() && "no indices");
-		assert(
-		  hit_record.barycentric_coordinates.has_value() &&
-		  "no barycentric coordinates"
-		);
 		const auto& mesh {dynamic_cast<const TriangleMesh&>(primitive)};
-		const auto indices {hit_record.vertex_indices.value()};
-		const auto vertex0 {mesh.vertices.at(indices.at(0))};
-		const auto vertex1 {mesh.vertices.at(indices.at(1))};
-		const auto vertex2 {mesh.vertices.at(indices.at(2))};
-		assert(
-		  vertex0.normal.has_value() &&
-		  vertex1.normal.has_value() &&
-		  vertex2.normal.has_value() &&
-		  "no normals"
-		);
-		const auto normal0 {vertex0.normal.value()};
-		const auto normal1 {vertex1.normal.value()};
-		const auto normal2 {vertex2.normal.value()};
-		const auto bary {hit_record.barycentric_coordinates.value()};
-		const auto w {1.f - bary.x - bary.y};
-		const auto u {bary.x};
-		const auto v {bary.y};
-		normal = (normal0 * w + normal1 * u + normal2 * v).Normalized();
-		auto offset0 {point - Vector3 {vertex0.position}};
-		auto offset1 {point - Vector3 {vertex1.position}};
-		auto offset2 {point - Vector3 {vertex2.position}};
-		const auto dot0 {std::min(0.f, Vector3::Dot(offset0, normal0))};
-		const auto dot1 {std::min(0.f, Vector3::Dot(offset1, normal1))};
-		const auto dot2 {std::min(0.f, Vector3::Dot(offset2, normal2))};
-		offset0 -= dot0 * normal0;
-		offset1 -= dot1 * normal1;
-		offset2 -= dot2 * normal2;
-		const Vector3 offset {w * offset0 + u * offset1 + v * offset2};
-		shadow_origin = point + offset + normal * 1e-3f;
-		if (
-		  vertex0.texture_coordinates.has_value() &&
-		  vertex1.texture_coordinates.has_value() &&
-		  vertex2.texture_coordinates.has_value()
-		)
-			shading_input.texture_coordinates =
-			  w * vertex0.texture_coordinates.value() +
-			  u * vertex1.texture_coordinates.value() +
-			  v * vertex2.texture_coordinates.value();
-		if (
-		  vertex0.tangent.has_value() &&
-		  vertex1.tangent.has_value() &&
-		  vertex2.tangent.has_value()
-		)
-			shading_input.world_tangent = w * vertex0.tangent.value() +
-			  u * vertex1.tangent.value() +
-			  v * vertex2.tangent.value();
-		if (
-		  vertex0.bitangent.has_value() &&
-		  vertex1.bitangent.has_value() &&
-		  vertex2.bitangent.has_value()
-		)
-			shading_input.world_bitangent = w * vertex0.bitangent.value() +
-			  u * vertex1.bitangent.value() +
-			  v * vertex2.bitangent.value();
+		ConstructShadingInputFromMesh(hit_record, shading_input, mesh);
 	}
 	break;
 	default: break;
 	}
-	const auto& object {GetObject(hit_record)};
-	if (object.instance_transformation.has_value())
+	if (
+	  const auto& object {GetObject(hit_record)};
+	  object.instance_transformation.has_value()
+	)
 	{
 		const auto& matrix {object.instance_transformation.value()};
-		point = matrix.TransformPoint(point);
-		shadow_origin = matrix.TransformPoint(shadow_origin);
-		normal = matrix.TransformNormal(normal);
+		shading_input.world_position =
+		  matrix.TransformPoint(shading_input.world_position);
+		shading_input.shadow_origin =
+		  matrix.TransformPoint(shading_input.shadow_origin);
+		shading_input.world_normal =
+		  matrix.TransformNormal(shading_input.world_normal);
 	}
 	return shading_input;
 }
 
-ColorRgba SoftwarePathTracer::CalculateRadiance(
-  const Light& light,
-  const Vector3& world_position
+void SoftwarePathTracer::ConstructShadingInputFromMesh(
+  const RayHitRecord& hit_record,
+  ShadingInput& shading_input,
+  const TriangleMesh& mesh
 )
 {
-	switch (light.type)
-	{
-	case LightType::kDirectional: return light.color * light.intensity;
-	case LightType::kPoint:
-	{
-		const auto difference {light.origin - world_position};
-		return light.color * light.intensity / Vector3::Dot(difference, difference);
-	}
-	case LightType::kNone: return ColorRgba {0.f};
-	default: return light.color * light.intensity;
-	}
-}
-
-ColorRgba SoftwarePathTracer::DirectIllumination(
-  const ShadingInput& shading_input,
-  const Material& material,
-  const SurfaceProperties& surface
-) const
-{
-	ColorRgba color {};
-	for (const auto& light : GetScene().lights_factory.GetAll())
-	{
-		auto point_to_light_direction {
-		  light.type == LightType::kDirectional
-		    ? -light.direction
-		    : light.origin - shading_input.world_position
-		};
-		const auto light_distance {point_to_light_direction.Normalize()};
-		const auto cos_theta {
-		  Vector3::Dot(shading_input.world_normal, point_to_light_direction)
-		};
-		if (cos_theta <= 0.f) continue;
-		const Ray shadow_ray {
-		  .origin = shading_input.shadow_origin,
-		  .direction = point_to_light_direction,
-		  .min = 1e-3f,
-		  .max = light.type == LightType::kDirectional
-		    ? std::numeric_limits<float>::max()
-		    : light_distance
-		};
-		RayHitRecord shadow_hit_record {};
-		if (HitTest(shadow_ray, shadow_hit_record, true)) continue;
-		ShadingInput complete_shading_input {shading_input};
-		complete_shading_input.light_direction = point_to_light_direction;
-		const auto brdf {material.Shade(complete_shading_input, surface)};
-		const auto rad {CalculateRadiance(light, shading_input.world_position)};
-		color += rad * brdf * cos_theta;
-	}
-	return color;
+	assert(hit_record.vertex_indices.has_value() && "no indices");
+	assert(
+	  hit_record.barycentric_coordinates.has_value() &&
+	  "no barycentric coordinates"
+	);
+	const auto indices {hit_record.vertex_indices.value()};
+	const auto vertex0 {mesh.vertices.at(indices.at(0))};
+	const auto vertex1 {mesh.vertices.at(indices.at(1))};
+	const auto vertex2 {mesh.vertices.at(indices.at(2))};
+	assert(
+	  vertex0.normal.has_value() &&
+	  vertex1.normal.has_value() &&
+	  vertex2.normal.has_value() &&
+	  "no normals"
+	);
+	const auto normal0 {vertex0.normal.value()};
+	const auto normal1 {vertex1.normal.value()};
+	const auto normal2 {vertex2.normal.value()};
+	const auto bary {hit_record.barycentric_coordinates.value()};
+	const auto w {1.f - bary.x - bary.y};
+	const auto u {bary.x};
+	const auto v {bary.y};
+	shading_input.world_normal =
+	  (normal0 * w + normal1 * u + normal2 * v).Normalized();
+	auto offset0 {shading_input.world_position - Vector3 {vertex0.position}};
+	auto offset1 {shading_input.world_position - Vector3 {vertex1.position}};
+	auto offset2 {shading_input.world_position - Vector3 {vertex2.position}};
+	const auto dot0 {std::min(0.f, Vector3::Dot(offset0, normal0))};
+	const auto dot1 {std::min(0.f, Vector3::Dot(offset1, normal1))};
+	const auto dot2 {std::min(0.f, Vector3::Dot(offset2, normal2))};
+	offset0 -= dot0 * normal0;
+	offset1 -= dot1 * normal1;
+	offset2 -= dot2 * normal2;
+	const Vector3 offset {w * offset0 + u * offset1 + v * offset2};
+	shading_input.shadow_origin =
+	  shading_input.world_position + offset + shading_input.world_normal * 1e-3f;
+	if (
+	  vertex0.texture_coordinates.has_value() &&
+	  vertex1.texture_coordinates.has_value() &&
+	  vertex2.texture_coordinates.has_value()
+	)
+		shading_input.texture_coordinates =
+		  w * vertex0.texture_coordinates.value() +
+		  u * vertex1.texture_coordinates.value() +
+		  v * vertex2.texture_coordinates.value();
+	if (
+	  vertex0.tangent.has_value() &&
+	  vertex1.tangent.has_value() &&
+	  vertex2.tangent.has_value()
+	)
+		shading_input.world_tangent = w * vertex0.tangent.value() +
+		  u * vertex1.tangent.value() +
+		  v * vertex2.tangent.value();
+	if (
+	  vertex0.bitangent.has_value() &&
+	  vertex1.bitangent.has_value() &&
+	  vertex2.bitangent.has_value()
+	)
+		shading_input.world_bitangent = w * vertex0.bitangent.value() +
+		  u * vertex1.bitangent.value() +
+		  v * vertex2.bitangent.value();
 }
 
 ColorRgba SoftwarePathTracer::GetLinearColor(
@@ -402,6 +400,92 @@ ColorRgba SoftwarePathTracer::GetLinearColor(
 	}
 }
 
+float SoftwarePathTracer::TraceAo(
+  const ShadingInput& shading_input,
+  uint32_t& hash_state
+) const
+{
+	float visibility_sum {0.f};
+	for (uint32_t s {0}; s < ao_sample_count_; ++s)
+	{
+		const auto [direction, pdf] {
+		  GetHemiSphereSample(shading_input.world_normal, hash_state)
+		};
+		const Ray ao_ray {
+		  .origin = shading_input.shadow_origin,
+		  .direction = direction,
+		  .min = 1e-3f,
+		  .max = ao_radius_
+		};
+		if (RayHitRecord ao_hit {}; HitTest(ao_ray, ao_hit, true)) continue;
+		const auto cos_theta {
+		  std::max(0.f, Vector3::Dot(direction, shading_input.world_normal))
+		};
+		const float f {cos_theta / std::numbers::pi_v<float>};
+		if (pdf > 0.f) visibility_sum += f / pdf;
+	}
+	return visibility_sum / static_cast<float>(ao_sample_count_);
+}
+
+ColorRgba SoftwarePathTracer::DirectIllumination(
+  const ShadingInput& shading_input,
+  const Material& material,
+  const SurfaceProperties& surface
+) const
+{
+	ColorRgba color {};
+	for (const auto& light : GetScene().lights_factory.GetAll())
+	{
+		auto point_to_light_direction {
+		  light.type == LightType::kDirectional
+		    ? -light.direction
+		    : light.origin - shading_input.world_position
+		};
+		const auto light_distance {point_to_light_direction.Normalize()};
+		const auto cos_theta {
+		  Vector3::Dot(shading_input.world_normal, point_to_light_direction)
+		};
+		if (cos_theta <= 0.f) continue;
+		const Ray shadow_ray {
+		  .origin = shading_input.shadow_origin,
+		  .direction = point_to_light_direction,
+		  .min = 1e-3f,
+		  .max = light.type == LightType::kDirectional
+		    ? std::numeric_limits<float>::max()
+		    : light_distance
+		};
+		if (
+		  RayHitRecord shadow_hit_record {};
+		  HitTest(shadow_ray, shadow_hit_record, true)
+		)
+			continue;
+		ShadingInput complete_shading_input {shading_input};
+		complete_shading_input.light_direction = point_to_light_direction;
+		const auto brdf {material.Shade(complete_shading_input, surface)};
+		const auto rad {CalculateRadiance(light, shading_input.world_position)};
+		color += rad * brdf * cos_theta;
+	}
+	return color;
+}
+
+ColorRgba SoftwarePathTracer::CalculateRadiance(
+  const Light& light,
+  const Vector3& world_position
+)
+{
+	switch (light.type)
+	{
+	case LightType::kDirectional: return light.color * light.intensity;
+	case LightType::kPoint:
+	{
+		const auto difference {light.origin - world_position};
+		return light.color * light.intensity / Vector3::Dot(difference, difference);
+	}
+	case LightType::kNone: return ColorRgba {0.f};
+	default: return light.color * light.intensity;
+	}
+}
+
 void SoftwarePathTracer::WriteColor(
   const uint32_t pixel_index,
   const ColorRgba& color
@@ -451,98 +535,3 @@ void SoftwarePathTracer::WriteColorFromBufferToScreen(
 	}
 	WriteColorToScreen(pixel_index, color);
 }
-
-float SoftwarePathTracer::TraceAo(
-  const ShadingInput& shading_input,
-  uint32_t& hash_state
-) const
-{
-	float visibility_sum {0.f};
-	for (uint32_t s {0}; s < ao_sample_count_; ++s)
-	{
-		const auto [direction, pdf] {
-		  GetHemiSphereSample(shading_input.world_normal, hash_state)
-		};
-		const Ray ao_ray {
-		  .origin = shading_input.shadow_origin,
-		  .direction = direction,
-		  .min = 1e-3f,
-		  .max = ao_radius_
-		};
-		if (RayHitRecord ao_hit {}; HitTest(ao_ray, ao_hit, true)) continue;
-		const auto cos_theta {
-		  std::max(0.f, Vector3::Dot(direction, shading_input.world_normal))
-		};
-		const float f {cos_theta / std::numbers::pi_v<float>};
-		if (pdf > 0.f) visibility_sum += f / pdf;
-	}
-	return visibility_sum / static_cast<float>(ao_sample_count_);
-}
-
-ColorRgba SoftwarePathTracer::TracePath(
-  const Ray& ray,
-  uint32_t& hash_state,
-  int max_bounces
-) const
-{
-	auto accumulated_color {ColorRgba::Black()};
-	auto throughput {ColorRgba::White()};
-	Ray current_ray {ray};
-	int bounces {0};
-	for (; bounces < max_bounces; ++bounces)
-	{
-		RayHitRecord hit_record {};
-		if (!HitTest(current_ray, hit_record))
-		{
-			accumulated_color += GetScene().background_color;
-			break;
-		}
-		auto shading_input {ConstructShadingInput(hit_record)};
-		const auto& mat {GetMaterial(hit_record)};
-		const auto surface {GetSurfaceProperties(mat, shading_input)};
-		shading_input.world_normal = surface.shading_normal;
-		auto color {GetLinearColor(hit_record, shading_input, hash_state)};
-		accumulated_color += throughput * color;
-		const auto [direction, pdf] {
-		  GetHemiSphereSample(shading_input.world_normal, hash_state)
-		};
-		const auto n_dot_l {Vector3::Dot(shading_input.world_normal, direction)};
-		if (n_dot_l <= 0.f || pdf < 1e-6f) break;
-		shading_input.light_direction = direction;
-		const auto brdf {mat.Shade(shading_input, surface)};
-		const BounceSample bounce_sample {
-		  .direction = direction,
-		  .weight = brdf * n_dot_l / pdf
-		};
-		throughput *= bounce_sample.weight;
-		current_ray =
-		  Ray {.origin = shading_input.shadow_origin, .direction = direction};
-	}
-	return accumulated_color;
-}
-
-HemiSphereSample SoftwarePathTracer::GetHemiSphereSample(
-  const Vector3& normal,
-  uint32_t& hash_state
-) const
-{
-	switch (context_->debug_params.sampling_strategy)
-	{
-	case SamplingStrategy::kUniform:
-		return UniformHemiSphereSample(normal, hash_state);
-	default: return CosineHemiSphereSample(normal, hash_state);
-	}
-}
-
-Vector2 SoftwarePathTracer::GenerateSubPixelJitter(uint32_t& hash_state)
-{
-	const auto jx {NextFloat(hash_state)};
-	const auto jy {NextFloat(hash_state)};
-	return Vector2 {jx, jy};
-}
-
-uint32_t SoftwarePathTracer::GetPixelIndex(
-  const uint32_t screen_x,
-  const uint32_t screen_y
-) const
-{ return screen_x + context_->surface_info.width * screen_y; }
