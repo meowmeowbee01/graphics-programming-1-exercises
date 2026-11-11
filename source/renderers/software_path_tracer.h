@@ -30,6 +30,49 @@ namespace gfx
 		void Render() override;
 
 	private:
+		[[nodiscard]] const Scene& GetScene() const
+		{ return *context_->scene_manager->GetActiveScene(); }
+
+		[[nodiscard]] const SceneObject& GetObject(const size_t index) const
+		{ return GetScene().objects.at(index); }
+
+		[[nodiscard]] const SceneObject& GetObject(const RayHitRecord& hit) const
+		{ return GetObject(hit.object_index); }
+
+		[[nodiscard]] const Primitive& GetPrimitive(const uint32_t index) const
+		{ return *GetScene().primitives_factory.Get(index); }
+
+		[[nodiscard]] const Primitive& GetPrimitive(const RayHitRecord& hit) const
+		{ return GetPrimitive(GetObject(hit).primitive_index); }
+
+		[[nodiscard]] const Material& GetMaterial(const uint32_t index) const
+		{ return *GetScene().materials_factory.Get(index); }
+
+		[[nodiscard]] const Material& GetMaterial(const SceneObject& obj) const
+		{ return GetMaterial(obj.material_index); }
+
+		[[nodiscard]] const Material& GetMaterial(const RayHitRecord& hit) const
+		{ return GetMaterial(GetObject(hit)); }
+
+		[[nodiscard]] SurfaceProperties GetSurfaceProperties(
+		  const Material& material,
+		  const ShadingInput& input
+		) const
+		{
+			return material.GetSurfaceProperties(input, GetScene().textures_factory);
+		}
+
+		[[nodiscard]] SurfaceProperties GetSurfaceProperties(
+		  const RayHitRecord& hit,
+		  const ShadingInput& input
+		) const
+		{
+			return GetMaterial(hit).GetSurfaceProperties(
+			  input,
+			  GetScene().textures_factory
+			);
+		}
+
 		const uint32_t ao_sample_count_ {1};
 		const float ao_radius_ {10.f};
 
@@ -59,7 +102,6 @@ namespace gfx
 
 		[[nodiscard]] ColorRgba DirectIllumination(
 		  const ShadingInput& shading_input,
-		  const Scene& scene,
 		  const Material& material,
 		  const SurfaceProperties& surface
 		) const;

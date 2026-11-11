@@ -34,9 +34,7 @@ void SoftwarePathTracer::Render()
 	const auto total_pixels {
 	  context_->surface_info.width * context_->surface_info.height
 	};
-	const auto scene_changed {
-	  context_->scene_manager->GetActiveScene()->scene_changed
-	};
+	const auto scene_changed {GetScene().scene_changed};
 	const auto buffer_wrong_size {accumulation_buffer_.size() != total_pixels};
 	const auto vis_changed {vis_mode != last_vis_mode_};
 	const auto sampling_changed {sampling != last_sampling_strategy_};
@@ -72,7 +70,6 @@ void SoftwarePathTracer::RenderPixel(
 	auto hash_state {LowBias32(
 	  context_->debug_params.accumulated_samples * 2654435761u ^ pixel_index
 	)};
-	const auto& scene {*context_->scene_manager->GetActiveScene()};
 	const auto ray {GetRay(screen_x, screen_y, hash_state)};
 	//readability
 	//ReSharper disable once CppTooWideScopeInitStatement
@@ -80,18 +77,14 @@ void SoftwarePathTracer::RenderPixel(
 	if (HitTest(ray, hit_record))
 	{
 		auto shading_input {ConstructShadingInput(hit_record)};
-		const auto& object {scene.objects.at(hit_record.object_index)};
-		const auto& material {*scene.materials_factory.Get(object.material_index)};
-		const auto surface {
-		  material.GetSurfaceProperties(shading_input, scene.textures_factory)
-		};
+		const auto surface {GetSurfaceProperties(hit_record, shading_input)};
 		shading_input.world_normal = surface.shading_normal;
 		const auto color {GetLinearColor(hit_record, shading_input, hash_state)};
 		WriteColor(pixel_index, color);
 	}
 	else
 	{
-		const auto color {scene.background_color};
+		const auto color {GetScene().background_color};
 		IsDebugView() ? WriteColorToScreen(pixel_index, color)
 		              : WriteColorToBuffer(pixel_index, color);
 	}
@@ -152,20 +145,17 @@ bool SoftwarePathTracer::HitTest(
   const bool ignore_hit_record
 ) const
 {
-	const auto& scene {*context_->scene_manager->GetActiveScene()};
 	bool did_hit {false};
-	for (size_t i {0}; i < scene.objects.size(); ++i)
+	for (size_t i {0}; i < GetScene().objects.size(); ++i)
 	{
-		const auto& object {scene.objects.at(i)};
+		const auto& object {GetObject(i)};
 		auto transformed_ray {
 		  object.instance_transformation.has_value()
 		    ? object.instance_transformation->TransformRay(ray)
 		    : ray
 		};
 		transformed_ray.max = std::min(ray.max, closest_hit_record.t);
-		const auto& primitive {
-		  *scene.primitives_factory.Get(object.primitive_index)
-		};
+		const auto& primitive {GetPrimitive(object.primitive_index)};
 		//readability
 		//ReSharper disable once CppTooWideScopeInitStatement
 		RayHitRecord hit_record {.object_index = static_cast<uint32_t>(i)};
@@ -195,9 +185,7 @@ SoftwarePathTracer::ConstructShadingInput(const RayHitRecord& hit_record) const
 #ifdef BVH_VIZ_NODE_OWNER
 	return {.world_normal = {0.f, 0.f, 0.f}, .world_position = {0.f, 0.f, 0.f}};
 #endif
-	const auto& scene {*context_->scene_manager->GetActiveScene()};
-	const auto object {scene.objects.at(hit_record.object_index)};
-	const auto& primitive {*scene.primitives_factory.Get(object.primitive_index)};
+	const auto& primitive {GetPrimitive(hit_record)};
 	ShadingInput shading_input {};
 	shading_input.view_direction = -hit_record.ray.direction;
 	auto& point {shading_input.world_position};
@@ -293,6 +281,9 @@ SoftwarePathTracer::ConstructShadingInput(const RayHitRecord& hit_record) const
 	break;
 	default: break;
 	}
+	//readability
+	//ReSharper disable once CppTooWideScopeInitStatement
+	const auto& object {GetObject(hit_record)};
 	if (object.instance_transformation.has_value())
 	{
 		const auto& matrix {object.instance_transformation.value()};
@@ -323,13 +314,12 @@ ColorRgba SoftwarePathTracer::CalculateRadiance(
 
 ColorRgba SoftwarePathTracer::DirectIllumination(
   const ShadingInput& shading_input,
-  const Scene& scene,
   const Material& material,
   const SurfaceProperties& surface
 ) const
 {
 	ColorRgba color {};
-	for (const auto& light : scene.lights_factory.GetAll())
+	for (const auto& light : GetScene().lights_factory.GetAll())
 	{
 		auto point_to_light_direction {
 		  light.type == LightType::kDirectional
@@ -368,12 +358,8 @@ ColorRgba SoftwarePathTracer::GetLinearColor(
   uint32_t& hash_state
 ) const
 {
-	const auto& scene {*context_->scene_manager->GetActiveScene()};
-	const auto& object {scene.objects.at(hit_record.object_index)};
-	const auto& material {*scene.materials_factory.Get(object.material_index)};
-	const auto surface {
-	  material.GetSurfaceProperties(shading_input, scene.textures_factory)
-	};
+	const auto& material {GetMaterial(hit_record)};
+	const auto surface {GetSurfaceProperties(material, shading_input)};
 	switch (context_->debug_params.visualization_mode)
 	{
 	case VisualizationMode::kDepth:
@@ -419,16 +405,12 @@ ColorRgba SoftwarePathTracer::GetLinearColor(
 	break;
 	case VisualizationMode::kDirectOnly:
 	{
-		return ColorRgba {
-		  DirectIllumination(shading_input, scene, material, surface)
-		};
+		return ColorRgba {DirectIllumination(shading_input, material, surface)};
 	}
 	break;
 	default:
 	{
-		return ColorRgba {
-		  DirectIllumination(shading_input, scene, material, surface)
-		};
+		return ColorRgba {DirectIllumination(shading_input, material, surface)};
 	}
 	break;
 	}
