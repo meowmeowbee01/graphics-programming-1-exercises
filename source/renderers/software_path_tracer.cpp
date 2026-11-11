@@ -145,7 +145,8 @@ ColorRgba SoftwarePathTracer::TracePath(
 		RayHitRecord hit_record {};
 		if (!HitTest(current_ray, hit_record))
 		{
-			accumulated_color += GetScene().background_color;
+			accumulated_color +=
+			  throughput * EnvironmentRadiance(current_ray.direction);
 			break;
 		}
 		auto shading_input {ConstructShadingInput(hit_record)};
@@ -205,6 +206,25 @@ bool SoftwarePathTracer::HitTest(
 		}
 	}
 	return did_hit;
+}
+
+ColorRgba
+SoftwarePathTracer::EnvironmentRadiance(const Vector3& direction) const
+{
+	const auto& scene {GetScene()};
+	if (!scene.environment_map.has_value()) return scene.background_color;
+	const auto& [texture, intensity, rotation_degrees, flip_horizontal] {
+	  scene.environment_map.value()
+	};
+	auto dir {direction};
+	if (flip_horizontal) dir.x = -dir.x;
+	const auto rot {rotation_degrees * std::numbers::pi_v<float> / 180.f};
+	dir = Vector3 {
+	  cosf(rot) * dir.x - sinf(rot) * dir.z,
+	  dir.y,
+	  sinf(rot) * dir.x + cosf(rot) * dir.z
+	};
+	return texture.SampleDirection(dir) * intensity;
 }
 
 ShadingInput

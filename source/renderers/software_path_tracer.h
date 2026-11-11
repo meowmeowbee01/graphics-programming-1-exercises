@@ -128,6 +128,8 @@ namespace gfx
 		  bool ignore_hit_record = false
 		) const;
 
+		[[nodiscard]] ColorRgba EnvironmentRadiance(const Vector3& direction) const;
+
 		[[nodiscard]] ShadingInput
 		ConstructShadingInput(const RayHitRecord& hit_record) const;
 
