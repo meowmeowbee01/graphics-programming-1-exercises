@@ -6,9 +6,9 @@
 #ifndef SOFTWARE_PATH_TRACER_HEADER
 #define SOFTWARE_PATH_TRACER_HEADER
 
-//--- Standard Includes ---
-
 //--- Framework Includes ---
+#include "samplers.h"
+
 #include <renderer.h>
 
 namespace gfx
@@ -36,12 +36,6 @@ namespace gfx
 		VisualizationMode last_vis_mode_ {VisualizationMode::kNone};
 		SamplingStrategy last_sampling_strategy_ {SamplingStrategy::kCosine};
 		std::vector<ColorRgba> accumulation_buffer_ {};
-
-		struct HemiSphereSample
-		{
-			Vector3 direction {};
-			float pdf {};
-		};
 
 		[[nodiscard]] bool IsDebugView() const
 		{ return gfx::IsDebugView(context_->debug_params.visualization_mode); }
@@ -88,12 +82,6 @@ namespace gfx
 
 		[[nodiscard]] HemiSphereSample
 		GetHemiSphereSample(const Vector3& normal, uint32_t seed) const;
-
-		static HemiSphereSample
-		UniformHemiSphereSample(const Vector3& normal, uint32_t seed);
-
-		static HemiSphereSample
-		CosineHemiSphereSample(const Vector3& normal, uint32_t seed);
 
 		[[nodiscard]] Vector2 GenerateSubPixelJitter(uint32_t pixel_index) const;
 
