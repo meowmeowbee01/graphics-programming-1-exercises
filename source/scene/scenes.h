@@ -1015,17 +1015,14 @@ namespace gfx
 	//-------------------------------------------------------------------------
 	//PathTraceScene: Path tracing showcase with HDRI environment.
 	//-------------------------------------------------------------------------
-	struct PathTraceScene final : Scene
+	struct PathTraceScene final : public Scene
 	{
 		void Setup() override
 		{
 			//Camera setup
-			camera.SetPosition({0, 3.f, -7.f});
+			camera.SetPosition({0, 3.2f, -7.85f});
 			camera.SetFovAngle(50.f);
 			camera.Pitch(-0.25f);
-
-			//Fallback sky color (visible at step 0 before HDRI is enabled)
-			background_color = ColorRgba(0.5f, 0.7f, 1.0f);
 
 			//HDRI environment map
 			environment_map.emplace(
@@ -1044,13 +1041,19 @@ namespace gfx
 			});
 
 			//PBR material setup
+			//Tinted glass (KHR_materials_volume): the colour builds up with the
+			//distance travelled inside, so rays through the centre come out teal and
+			//rays grazing the rim stay almost clear. attenuation_distance = one
+			//radius.
 			const uint32_t mat_glass {
 			  materials_factory.Create<PbrMaterial>(PbrMaterialParams {
 			    .albedo_color_factor = {1.f, 1.f, 1.f},
 			    .metallic_factor = 0.f,
 			    .roughness_factor = 0.f,
 			    .transmission_factor = 1.f,
-			    .ior = 1.5f
+			    .ior = 1.5f,
+			    .attenuation_color = {0.25f, 0.85f, 0.75f},
+			    .attenuation_distance = 0.8f
 			  })
 			};
 			const uint32_t mat_rough_plastic {
@@ -1065,6 +1068,13 @@ namespace gfx
 			    .albedo_color_factor = {0.95f, 0.93f, 0.88f},
 			    .metallic_factor = 1.f,
 			    .roughness_factor = 0.05f
+			  })
+			};
+			const uint32_t mat_rough_metal {
+			  materials_factory.Create<PbrMaterial>(PbrMaterialParams {
+			    .albedo_color_factor = {1.f, 0.782f, 0.344f},
+			    .metallic_factor = 1.f,
+			    .roughness_factor = 0.35f
 			  })
 			};
 			const uint32_t mat_polished_plastic {
@@ -1101,33 +1111,40 @@ namespace gfx
 			  {.primitive_index = ground, .material_index = mat_ground}
 			);
 
-			//4 spheres in a row
+			//5 spheres in a row: tinted glass, rough plastic, mirror metal, rough
+			//metal, polished plastic
 			const uint32_t s0 {
-			  primitives_factory.Create<Sphere>(Vector3(-3.f, 0.8f, 0.f), 0.8f)
+			  primitives_factory.Create<Sphere>(Vector3(-4.f, 0.8f, 0.f), 0.8f)
 			};
 			const uint32_t s1 {
-			  primitives_factory.Create<Sphere>(Vector3(-1.f, 0.8f, 0.f), 0.8f)
+			  primitives_factory.Create<Sphere>(Vector3(-2.f, 0.8f, 0.f), 0.8f)
 			};
 			const uint32_t s2 {
-			  primitives_factory.Create<Sphere>(Vector3(1.f, 0.8f, 0.f), 0.8f)
+			  primitives_factory.Create<Sphere>(Vector3(0.f, 0.8f, 0.f), 0.8f)
 			};
 			const uint32_t s3 {
-			  primitives_factory.Create<Sphere>(Vector3(3.f, 0.8f, 0.f), 0.8f)
+			  primitives_factory.Create<Sphere>(Vector3(2.f, 0.8f, 0.f), 0.8f)
+			};
+			const uint32_t s4 {
+			  primitives_factory.Create<Sphere>(Vector3(4.f, 0.8f, 0.f), 0.8f)
 			};
 			objects.push_back({.primitive_index = s0, .material_index = mat_glass});
 			objects.push_back(
 			  {.primitive_index = s1, .material_index = mat_rough_plastic}
 			);
 			objects.push_back(
-			  {.primitive_index = s2, .material_index = mat_polished_metal}
+			  {.primitive_index = s2, .material_index = mat_polished_plastic}
 			);
 			objects.push_back(
-			  {.primitive_index = s3, .material_index = mat_polished_plastic}
+			  {.primitive_index = s3, .material_index = mat_rough_metal}
+			);
+			objects.push_back(
+			  {.primitive_index = s4, .material_index = mat_polished_metal}
 			);
 
 			//Small yellow sphere behind glass sphere to showcase transparency
 			const uint32_t bs0 {
-			  primitives_factory.Create<Sphere>(Vector3(-3.f, 0.4f, 1.8f), 0.35f)
+			  primitives_factory.Create<Sphere>(Vector3(-4.f, 0.4f, 1.8f), 0.35f)
 			};
 			objects.push_back(
 			  {.primitive_index = bs0, .material_index = mat_bg_sphere}
