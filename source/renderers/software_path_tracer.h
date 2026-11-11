@@ -42,7 +42,8 @@ namespace gfx
 
 		void RenderPixel(uint32_t screen_x, uint32_t screen_y);
 
-		[[nodiscard]] Ray GetRay(uint32_t screen_x, uint32_t screen_y) const;
+		[[nodiscard]] Ray
+		GetRay(uint32_t screen_x, uint32_t screen_y, uint32_t& hash_state) const;
 
 		bool HitTest(
 		  const Ray& ray,
@@ -66,7 +67,7 @@ namespace gfx
 		[[nodiscard]] ColorRgba GetLinearColor(
 		  const RayHitRecord& hit_record,
 		  const ShadingInput& shading_input,
-		  uint32_t pixel_index
+		  uint32_t& hash_state
 		) const;
 
 		void WriteColor(uint32_t pixel_index, const ColorRgba& color);
@@ -78,12 +79,12 @@ namespace gfx
 		void WriteColorFromBufferToScreen(uint32_t pixel_index) const;
 
 		[[nodiscard]] float
-		TraceAo(const ShadingInput& shading_input, uint32_t pixel_index) const;
+		TraceAo(const ShadingInput& shading_input, uint32_t& hash_state) const;
 
 		[[nodiscard]] HemiSphereSample
-		GetHemiSphereSample(const Vector3& normal, uint32_t seed) const;
+		GetHemiSphereSample(const Vector3& normal, uint32_t& hash_state) const;
 
-		[[nodiscard]] Vector2 GenerateSubPixelJitter(uint32_t pixel_index) const;
+		[[nodiscard]] static Vector2 GenerateSubPixelJitter(uint32_t& hash_state);
 
 		[[nodiscard]] uint32_t
 		GetPixelIndex(uint32_t screen_x, uint32_t screen_y) const;

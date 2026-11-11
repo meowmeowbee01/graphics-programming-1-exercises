@@ -68,15 +68,18 @@ void SoftwarePathTracer::RenderPixel(
   const uint32_t screen_y
 )
 {
-	const auto ray {GetRay(screen_x, screen_y)};
 	const auto pixel_index {GetPixelIndex(screen_x, screen_y)};
+	auto hash_state {LowBias32(
+	  context_->debug_params.accumulated_samples * 2654435761u ^ pixel_index
+	)};
+	const auto ray {GetRay(screen_x, screen_y, hash_state)};
 	//readability
 	//ReSharper disable once CppTooWideScopeInitStatement
 	RayHitRecord hit_record {};
 	if (HitTest(ray, hit_record))
 	{
 		const auto shading_input {ConstructShadingInput(hit_record)};
-		auto color {GetLinearColor(hit_record, shading_input, pixel_index)};
+		auto color {GetLinearColor(hit_record, shading_input, hash_state)};
 		WriteColor(pixel_index, color);
 	}
 	else
@@ -92,7 +95,8 @@ void SoftwarePathTracer::RenderPixel(
 
 Ray SoftwarePathTracer::GetRay(
   const uint32_t screen_x,
-  const uint32_t screen_y
+  const uint32_t screen_y,
+  uint32_t& hash_state
 ) const
 {
 	const uint32_t screen_width {context_->surface_info.width};
@@ -100,15 +104,13 @@ Ray SoftwarePathTracer::GetRay(
 	const float aspect_ratio {
 	  static_cast<float>(screen_width) / static_cast<float>(screen_height)
 	};
-	const auto& camera {context_->scene_manager->GetActiveScene()->camera};
+	const auto camera {context_->scene_manager->GetActiveScene()->camera};
 	const float fov_radians {
 	  std::numbers::pi_v<float> / 180.f * camera.GetFovAngle()
 	};
 	const float fov {std::tanf(fov_radians / 2)};
-	const auto jitter {!IsDebugView()};
 	const auto offset {
-	  jitter ? GenerateSubPixelJitter(GetPixelIndex(screen_x, screen_y))
-	         : Vector2 {.5f, .5f}
+	  IsDebugView() ? Vector2 {.5f, .5f} : GenerateSubPixelJitter(hash_state)
 	};
 	const float ndc_x {
 	  (2.f *
@@ -359,7 +361,7 @@ ColorRgba SoftwarePathTracer::DirectIllumination(
 ColorRgba SoftwarePathTracer::GetLinearColor(
   const RayHitRecord& hit_record,
   const ShadingInput& shading_input,
-  const uint32_t pixel_index
+  uint32_t& hash_state
 ) const
 {
 	const auto& scene {*context_->scene_manager->GetActiveScene()};
@@ -408,7 +410,7 @@ ColorRgba SoftwarePathTracer::GetLinearColor(
 	break;
 	case VisualizationMode::kAo:
 	{
-		return ColorRgba {TraceAo(shading_input, pixel_index)};
+		return ColorRgba {TraceAo(shading_input, hash_state)};
 	}
 	break;
 	case VisualizationMode::kDirectOnly:
@@ -480,19 +482,14 @@ void SoftwarePathTracer::WriteColorFromBufferToScreen(
 
 float SoftwarePathTracer::TraceAo(
   const ShadingInput& shading_input,
-  const uint32_t pixel_index
+  uint32_t& hash_state
 ) const
 {
 	float visibility_sum {0.f};
 	for (uint32_t s {0}; s < ao_sample_count_; ++s)
 	{
-		const uint32_t ao_seed {
-		  pixel_index * 1973u +
-		  s * 6133u +
-		  context_->debug_params.accumulated_samples * 2654435761u
-		};
 		const auto [direction, pdf] {
-		  GetHemiSphereSample(shading_input.world_normal, ao_seed)
+		  GetHemiSphereSample(shading_input.world_normal, hash_state)
 		};
 		const Ray ao_ray {
 		  .origin = shading_input.shadow_origin,
@@ -512,25 +509,21 @@ float SoftwarePathTracer::TraceAo(
 
 HemiSphereSample SoftwarePathTracer::GetHemiSphereSample(
   const Vector3& normal,
-  const uint32_t seed
+  uint32_t& hash_state
 ) const
 {
 	switch (context_->debug_params.sampling_strategy)
 	{
-	case SamplingStrategy::kUniform: return UniformHemiSphereSample(normal, seed);
-	default: return CosineHemiSphereSample(normal, seed);
+	case SamplingStrategy::kUniform:
+		return UniformHemiSphereSample(normal, hash_state);
+	default: return CosineHemiSphereSample(normal, hash_state);
 	}
 }
 
-Vector2
-SoftwarePathTracer::GenerateSubPixelJitter(const uint32_t pixel_index) const
+Vector2 SoftwarePathTracer::GenerateSubPixelJitter(uint32_t& hash_state)
 {
-	const auto frame {context_->debug_params.accumulated_samples};
-	const auto frame_hash {LowBias32(frame + 0x9e3779b9u)};
-	auto h {LowBias32(pixel_index ^ frame_hash)};
-	const auto jx {HashToFloat(h)};
-	h = LowBias32(h);
-	const auto jy {HashToFloat(h)};
+	const auto jx {NextFloat(hash_state)};
+	const auto jy {NextFloat(hash_state)};
 	return Vector2 {jx, jy};
 }
 

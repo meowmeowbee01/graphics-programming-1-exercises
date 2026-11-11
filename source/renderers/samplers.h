@@ -19,6 +19,12 @@ namespace gfx
 	inline float HashToFloat(const uint32_t h)
 	{ return static_cast<float>(h >> 8u) * (1.f / 16777216.f); }
 
+	[[maybe_unused]] static float NextFloat(uint32_t& h)
+	{
+		h = LowBias32(h);
+		return HashToFloat(h);
+	}
+
 	inline Vector3
 	LocalToWorld(const Vector3& local_direction, const Vector3& normal)
 	{
@@ -39,12 +45,10 @@ namespace gfx
 	};
 
 	[[maybe_unused]] static HemiSphereSample
-	UniformHemiSphereSample(const Vector3& normal, const uint32_t seed)
+	UniformHemiSphereSample(const Vector3& normal, uint32_t& hash_state)
 	{
-		auto h {LowBias32(seed)};
-		const auto u1 {HashToFloat(h)};
-		h = LowBias32(h);
-		const auto u2 {HashToFloat(h)};
+		const auto u1 {NextFloat(hash_state)};
+		const auto u2 {NextFloat(hash_state)};
 		const auto cos_theta {u2};
 		const auto sin_theta {std::sqrtf(1.f - u2 * u2)};
 		const auto phi {u1 * std::numbers::pi_v<float> * 2.f};
@@ -56,12 +60,10 @@ namespace gfx
 	}
 
 	[[maybe_unused]] static HemiSphereSample
-	CosineHemiSphereSample(const Vector3& normal, const uint32_t seed)
+	CosineHemiSphereSample(const Vector3& normal, uint32_t& hash_state)
 	{
-		auto h {LowBias32(seed)};
-		const auto u1 {HashToFloat(h)};
-		h = LowBias32(h);
-		const auto u2 {HashToFloat(h)};
+		const auto u1 {NextFloat(hash_state)};
+		const auto u2 {NextFloat(hash_state)};
 		const auto cos_theta {std::sqrtf(1.f - u2)};
 		const auto sin_theta {std::sqrtf(u2)};
 		const auto phi {u1 * std::numbers::pi_v<float> * 2.f};
