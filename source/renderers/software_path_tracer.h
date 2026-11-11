@@ -80,8 +80,15 @@ namespace gfx
 		SamplingStrategy last_sampling_strategy_ {SamplingStrategy::kCosine};
 		std::vector<ColorRgba> accumulation_buffer_ {};
 
-		[[nodiscard]] bool IsDebugView() const
-		{ return gfx::IsDebugView(context_->debug_params.visualization_mode); }
+		[[nodiscard]] bool IsAccumulatedVisMode() const
+		{
+			return gfx::IsAccumulatedVisMode(
+			  context_->debug_params.visualization_mode
+			);
+		}
+
+		[[nodiscard]] bool IsBouncedVisMode() const
+		{ return gfx::IsBouncedVisMode(context_->debug_params.visualization_mode); }
 
 		void RenderPixel(uint32_t screen_x, uint32_t screen_y);
 
@@ -122,6 +129,15 @@ namespace gfx
 
 		[[nodiscard]] float
 		TraceAo(const ShadingInput& shading_input, uint32_t& hash_state) const;
+
+		struct BounceSample
+		{
+			Vector3 direction {};
+			ColorRgba weight {ColorRgba::Black()};
+		};
+
+		ColorRgba
+		TracePath(const Ray& ray, uint32_t& hash_state, int max_bounces = 8) const;
 
 		[[nodiscard]] HemiSphereSample
 		GetHemiSphereSample(const Vector3& normal, uint32_t& hash_state) const;

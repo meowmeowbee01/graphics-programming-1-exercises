@@ -57,7 +57,8 @@ void SoftwarePathTracer::Render()
 		  uint32_t screen_x = 0; screen_x < context_->surface_info.width; ++screen_x
 		)
 			RenderPixel(screen_x, screen_y);
-	if (!IsDebugView() && !context_->debug_params.sampling_paused) ++sample_count;
+	if (IsAccumulatedVisMode() && !context_->debug_params.sampling_paused)
+		++sample_count;
 }
 
 //private
@@ -71,24 +72,19 @@ void SoftwarePathTracer::RenderPixel(
 	  context_->debug_params.accumulated_samples * 2654435761u ^ pixel_index
 	)};
 	const auto ray {GetRay(screen_x, screen_y, hash_state)};
-	//readability
-	//ReSharper disable once CppTooWideScopeInitStatement
-	RayHitRecord hit_record {};
-	if (HitTest(ray, hit_record))
-	{
-		auto shading_input {ConstructShadingInput(hit_record)};
-		const auto surface {GetSurfaceProperties(hit_record, shading_input)};
-		shading_input.world_normal = surface.shading_normal;
-		const auto color {GetLinearColor(hit_record, shading_input, hash_state)};
+	const auto color {
+	  IsBouncedVisMode() ? TracePath(ray, hash_state)
+	                     : TracePath(ray, hash_state, 1)
+	};
+	if (
+	  std::isfinite(color.r) &&
+	  std::isfinite(color.g) &&
+	  std::isfinite(color.b) &&
+	  std::isfinite(color.a)
+	)
 		WriteColor(pixel_index, color);
-	}
-	else
-	{
-		const auto color {GetScene().background_color};
-		IsDebugView() ? WriteColorToScreen(pixel_index, color)
-		              : WriteColorToBuffer(pixel_index, color);
-	}
-	if (!IsDebugView()) WriteColorFromBufferToScreen(pixel_index);
+	else WriteColor(pixel_index, ColorRgba::Black());
+	if (IsAccumulatedVisMode()) WriteColorFromBufferToScreen(pixel_index);
 }
 
 Ray SoftwarePathTracer::GetRay(
@@ -108,7 +104,8 @@ Ray SoftwarePathTracer::GetRay(
 	};
 	const float fov {std::tanf(fov_radians / 2)};
 	const auto offset {
-	  IsDebugView() ? Vector2 {.5f, .5f} : GenerateSubPixelJitter(hash_state)
+	  IsAccumulatedVisMode() ? GenerateSubPixelJitter(hash_state)
+	                         : Vector2 {.5f, .5f}
 	};
 	const float ndc_x {
 	  (2.f *
@@ -156,8 +153,6 @@ bool SoftwarePathTracer::HitTest(
 		};
 		transformed_ray.max = std::min(ray.max, closest_hit_record.t);
 		const auto& primitive {GetPrimitive(object.primitive_index)};
-		//readability
-		//ReSharper disable once CppTooWideScopeInitStatement
 		RayHitRecord hit_record {.object_index = static_cast<uint32_t>(i)};
 		if (
 		  HitTestPrimitive(
@@ -281,8 +276,6 @@ SoftwarePathTracer::ConstructShadingInput(const RayHitRecord& hit_record) const
 	break;
 	default: break;
 	}
-	//readability
-	//ReSharper disable once CppTooWideScopeInitStatement
 	const auto& object {GetObject(hit_record)};
 	if (object.instance_transformation.has_value())
 	{
@@ -339,8 +332,6 @@ ColorRgba SoftwarePathTracer::DirectIllumination(
 		    ? std::numeric_limits<float>::max()
 		    : light_distance
 		};
-		//readability
-		//ReSharper disable once CppTooWideScopeInitStatement
 		RayHitRecord shadow_hit_record {};
 		if (HitTest(shadow_ray, shadow_hit_record, true)) continue;
 		ShadingInput complete_shading_input {shading_input};
@@ -403,11 +394,6 @@ ColorRgba SoftwarePathTracer::GetLinearColor(
 		return ColorRgba {TraceAo(shading_input, hash_state)};
 	}
 	break;
-	case VisualizationMode::kDirectOnly:
-	{
-		return ColorRgba {DirectIllumination(shading_input, material, surface)};
-	}
-	break;
 	default:
 	{
 		return ColorRgba {DirectIllumination(shading_input, material, surface)};
@@ -421,8 +407,8 @@ void SoftwarePathTracer::WriteColor(
   const ColorRgba& color
 )
 {
-	IsDebugView() ? WriteColorToScreen(pixel_index, color)
-	              : WriteColorToBuffer(pixel_index, color);
+	IsAccumulatedVisMode() ? WriteColorToBuffer(pixel_index, color)
+	                       : WriteColorToScreen(pixel_index, color);
 }
 
 void SoftwarePathTracer::WriteColorToScreen(
@@ -458,7 +444,7 @@ void SoftwarePathTracer::WriteColorFromBufferToScreen(
 	   static_cast<float>(!context_->debug_params.sampling_paused))
 	};
 	auto color {accumulation_buffer_.at(pixel_index) * inv_frames};
-	if (!IsDebugView())
+	if (IsAccumulatedVisMode())
 	{
 		color = color.Tonemap(context_->debug_params.tone_map_operator).ToSrgb();
 		color.Clamp();
@@ -491,6 +477,48 @@ float SoftwarePathTracer::TraceAo(
 		if (pdf > 0.f) visibility_sum += f / pdf;
 	}
 	return visibility_sum / static_cast<float>(ao_sample_count_);
+}
+
+ColorRgba SoftwarePathTracer::TracePath(
+  const Ray& ray,
+  uint32_t& hash_state,
+  int max_bounces
+) const
+{
+	auto accumulated_color {ColorRgba::Black()};
+	auto throughput {ColorRgba::White()};
+	Ray current_ray {ray};
+	int bounces {0};
+	for (; bounces < max_bounces; ++bounces)
+	{
+		RayHitRecord hit_record {};
+		if (!HitTest(current_ray, hit_record))
+		{
+			accumulated_color += GetScene().background_color;
+			break;
+		}
+		auto shading_input {ConstructShadingInput(hit_record)};
+		const auto& mat {GetMaterial(hit_record)};
+		const auto surface {GetSurfaceProperties(mat, shading_input)};
+		shading_input.world_normal = surface.shading_normal;
+		auto color {GetLinearColor(hit_record, shading_input, hash_state)};
+		accumulated_color += throughput * color;
+		const auto [direction, pdf] {
+		  GetHemiSphereSample(shading_input.world_normal, hash_state)
+		};
+		const auto n_dot_l {Vector3::Dot(shading_input.world_normal, direction)};
+		if (n_dot_l <= 0.f || pdf < 1e-6f) break;
+		shading_input.light_direction = direction;
+		const auto brdf {mat.Shade(shading_input, surface)};
+		const BounceSample bounce_sample {
+		  .direction = direction,
+		  .weight = brdf * n_dot_l / pdf
+		};
+		throughput *= bounce_sample.weight;
+		current_ray =
+		  Ray {.origin = shading_input.shadow_origin, .direction = direction};
+	}
+	return accumulated_color;
 }
 
 HemiSphereSample SoftwarePathTracer::GetHemiSphereSample(
