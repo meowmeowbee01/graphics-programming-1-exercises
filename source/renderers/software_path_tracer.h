@@ -90,14 +90,19 @@ namespace gfx
 		[[nodiscard]] static Vector2 GenerateSubPixelJitter(uint32_t& hash_state)
 		{ return {NextFloat(hash_state), NextFloat(hash_state)}; }
 
-		[[nodiscard]] HemiSphereSample
-		GetHemiSphereSample(const Vector3& normal, uint32_t& hash_state) const
+		[[nodiscard]] HemiSphereSample GetHemiSphereSample(
+		  const ShadingInput& input,
+		  const SurfaceProperties& surface,
+		  uint32_t& hash_state
+		) const
 		{
 			switch (context_->debug_params.sampling_strategy)
 			{
 			case SamplingStrategy::kUniform:
-				return UniformHemiSphereSample(normal, hash_state);
-			default: return CosineHemiSphereSample(normal, hash_state);
+				return SampleUniform(surface.shading_normal, hash_state);
+			case SamplingStrategy::kGGX:
+				return SampleSpecularOrDiffuse(input, surface, hash_state);
+			default: return SampleCosine(surface.shading_normal, hash_state);
 			}
 		}
 
@@ -142,6 +147,8 @@ namespace gfx
 		[[nodiscard]] ColorRgba GetLinearColor(
 		  const RayHitRecord& hit_record,
 		  const ShadingInput& shading_input,
+		  const Material& material,
+		  const SurfaceProperties& surface,
 		  uint32_t& hash_state
 		) const;
 

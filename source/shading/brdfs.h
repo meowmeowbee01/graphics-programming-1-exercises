@@ -80,7 +80,7 @@ namespace gfx
 	  const Vector3& n,
 	  const Vector3& v,
 	  const float roughness,
-	  [[maybe_unused]] const bool is_indirect = false
+	  const bool is_indirect = false
 	)
 	{
 		const auto k {

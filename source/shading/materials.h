@@ -32,6 +32,7 @@ namespace gfx
 		std::optional<Vector3> world_tangent {};
 		std::optional<Vector3> world_bitangent {};
 		std::optional<Vector2> texture_coordinates {};
+		bool is_indirect {};
 	};
 
 	//--- Alpha Coverage ---
@@ -383,7 +384,8 @@ namespace gfx
 			  surface.shading_normal,
 			  input.view_direction,
 			  input.light_direction,
-			  surface.roughness
+			  surface.roughness,
+			  input.is_indirect
 			)};
 			const auto nv {
 			  Vector3::Dot(surface.shading_normal, input.view_direction)

@@ -139,8 +139,7 @@ ColorRgba SoftwarePathTracer::TracePath(
 	auto accumulated_color {ColorRgba::Black()};
 	auto throughput {ColorRgba::White()};
 	Ray current_ray {ray};
-	int bounces {0};
-	for (; bounces < max_bounces; ++bounces)
+	for (int bounces {0}; bounces < max_bounces; ++bounces)
 	{
 		RayHitRecord hit_record {};
 		if (!HitTest(current_ray, hit_record))
@@ -151,16 +150,20 @@ ColorRgba SoftwarePathTracer::TracePath(
 		}
 		auto shading_input {ConstructShadingInput(hit_record)};
 		const auto& mat {GetMaterial(hit_record)};
-		const auto surface {GetSurfaceProperties(mat, shading_input)};
+		auto surface {GetSurfaceProperties(mat, shading_input)};
+		surface.roughness = std::max(surface.roughness, 1e-2f);
 		shading_input.world_normal = surface.shading_normal;
-		auto color {GetLinearColor(hit_record, shading_input, hash_state)};
+		auto color {
+		  GetLinearColor(hit_record, shading_input, mat, surface, hash_state)
+		};
 		accumulated_color += throughput * color;
 		const auto [direction, pdf] {
-		  GetHemiSphereSample(shading_input.world_normal, hash_state)
+		  GetHemiSphereSample(shading_input, surface, hash_state)
 		};
 		const auto n_dot_l {Vector3::Dot(shading_input.world_normal, direction)};
 		if (n_dot_l <= 0.f || pdf < 1e-6f) break;
 		shading_input.light_direction = direction;
+		shading_input.is_indirect = true;
 		const auto brdf {mat.Shade(shading_input, surface)};
 		const BounceSample bounce_sample {
 		  .direction = direction,
@@ -364,11 +367,11 @@ void SoftwarePathTracer::ConstructShadingInputFromMesh(
 ColorRgba SoftwarePathTracer::GetLinearColor(
   const RayHitRecord& hit_record,
   const ShadingInput& shading_input,
+  const Material& material,
+  const SurfaceProperties& surface,
   uint32_t& hash_state
 ) const
 {
-	const auto& material {GetMaterial(hit_record)};
-	const auto surface {GetSurfaceProperties(material, shading_input)};
 	switch (context_->debug_params.visualization_mode)
 	{
 	case VisualizationMode::kDepth:
@@ -429,7 +432,9 @@ float SoftwarePathTracer::TraceAo(
 	for (uint32_t s {0}; s < ao_sample_count_; ++s)
 	{
 		const auto [direction, pdf] {
-		  GetHemiSphereSample(shading_input.world_normal, hash_state)
+		  context_->debug_params.sampling_strategy == SamplingStrategy::kUniform
+		    ? SampleUniform(shading_input.world_normal, hash_state)
+		    : SampleCosine(shading_input.world_normal, hash_state)
 		};
 		const Ray ao_ray {
 		  .origin = shading_input.shadow_origin,
