@@ -72,21 +72,26 @@ void SoftwarePathTracer::RenderPixel(
 	auto hash_state {LowBias32(
 	  context_->debug_params.accumulated_samples * 2654435761u ^ pixel_index
 	)};
+	const auto& scene {*context_->scene_manager->GetActiveScene()};
 	const auto ray {GetRay(screen_x, screen_y, hash_state)};
 	//readability
 	//ReSharper disable once CppTooWideScopeInitStatement
 	RayHitRecord hit_record {};
 	if (HitTest(ray, hit_record))
 	{
-		const auto shading_input {ConstructShadingInput(hit_record)};
-		auto color {GetLinearColor(hit_record, shading_input, hash_state)};
+		auto shading_input {ConstructShadingInput(hit_record)};
+		const auto& object {scene.objects.at(hit_record.object_index)};
+		const auto& material {*scene.materials_factory.Get(object.material_index)};
+		const auto surface {
+		  material.GetSurfaceProperties(shading_input, scene.textures_factory)
+		};
+		shading_input.world_normal = surface.shading_normal;
+		const auto color {GetLinearColor(hit_record, shading_input, hash_state)};
 		WriteColor(pixel_index, color);
 	}
 	else
 	{
-		const auto color {
-		  context_->scene_manager->GetActiveScene()->background_color
-		};
+		const auto color {scene.background_color};
 		IsDebugView() ? WriteColorToScreen(pixel_index, color)
 		              : WriteColorToBuffer(pixel_index, color);
 	}
@@ -350,7 +355,6 @@ ColorRgba SoftwarePathTracer::DirectIllumination(
 		if (HitTest(shadow_ray, shadow_hit_record, true)) continue;
 		ShadingInput complete_shading_input {shading_input};
 		complete_shading_input.light_direction = point_to_light_direction;
-		complete_shading_input.world_normal = surface.shading_normal;
 		const auto brdf {material.Shade(complete_shading_input, surface)};
 		const auto rad {CalculateRadiance(light, shading_input.world_position)};
 		color += rad * brdf * cos_theta;
