@@ -105,7 +105,8 @@ namespace gfx
 	  const Sphere& sphere,
 	  const Ray& ray,
 	  RayHitRecord& hit_record,
-	  const bool ignore_hit_record = false
+	  const bool ignore_hit_record = false,
+	  const bool reverse_culling = false
 	)
 	{
 		//might be faster to not do this for spheres?
@@ -127,7 +128,11 @@ namespace gfx
 		const float projection_distance_difference {
 		  std::sqrtf(std::powf(sphere.radius, 2) - std::powf(rejection_size, 2))
 		};
-		const float t {projection_size - projection_distance_difference};
+		const float t {
+		  projection_size +
+		  (reverse_culling ? projection_distance_difference
+		                   : -projection_distance_difference)
+		};
 		if (ray.min > t || t > ray.max) return false;
 		if (ignore_hit_record) return true;
 		hit_record.ray = ray;
@@ -139,14 +144,15 @@ namespace gfx
 	  const Plane& plane,
 	  const Ray& ray,
 	  RayHitRecord& hit_record,
-	  const bool ignore_hit_record = false
+	  const bool ignore_hit_record = false,
+	  const bool reverse_culling = false
 	)
 	{
 		Vector3 normal {plane.normal};
 		float dn {Vector3::Dot(ray.direction, plane.normal)};
 
 		//flip double-sided plane if facing away
-		if (plane.double_sided && dn > 0.0f)
+		if ((plane.double_sided && dn > 0.0f) || reverse_culling)
 		{
 			normal = -normal;
 			dn = -dn;
@@ -181,7 +187,8 @@ namespace gfx
 	  const Triangle& triangle,
 	  const Ray& ray,
 	  RayHitRecord& hit_record,
-	  const bool ignore_hit_record = false
+	  const bool ignore_hit_record = false,
+	  const bool reverse_culling = false
 	)
 	{
 		//might be faster to not do this for triangles?
@@ -191,9 +198,11 @@ namespace gfx
 		)
 			return false;
 
-		const auto dn {Vector3::Dot(ray.direction, triangle.normal)};
+		auto dn {Vector3::Dot(ray.direction, triangle.normal)};
 
 		if (std::abs(dn) < 1e-4f) return false; //parallel
+
+		if (reverse_culling) dn = -dn;
 
 		if (
 		  (triangle.cull_mode == CullMode::kBackFaceCulling && dn >= 0.f) ||
@@ -229,7 +238,8 @@ namespace gfx
 	  const TriangleMesh& mesh,
 	  const Ray& ray,
 	  RayHitRecord& closest_hit_record,
-	  const bool ignore_hit_record = false
+	  const bool ignore_hit_record = false,
+	  const bool reverse_culling = false
 	)
 	{
 		assert(!mesh.bvh_nodes.empty() && "bvh not built");
@@ -357,7 +367,13 @@ namespace gfx
 				Ray capped_ray {ray};
 				capped_ray.max = std::min(ray.max, closest_hit_record.t);
 				if (
-				  HitTestTriangle(triangle, capped_ray, hit_record, ignore_hit_record)
+				  HitTestTriangle(
+				    triangle,
+				    capped_ray,
+				    hit_record,
+				    ignore_hit_record,
+				    reverse_culling
+				  )
 				)
 				{
 					if (ignore_hit_record) return true;
@@ -373,7 +389,8 @@ namespace gfx
 	  const Primitive& primitive,
 	  const Ray& ray,
 	  RayHitRecord& hit_record,
-	  const bool ignore_hit_record = false
+	  const bool ignore_hit_record = false,
+	  bool reverse_culling = false
 	)
 	{
 		switch (primitive.type)
@@ -381,25 +398,49 @@ namespace gfx
 		case PrimitiveType::kPlane:
 		{
 			const auto& plane {dynamic_cast<const Plane&>(primitive)};
-			return HitTestPlane(plane, ray, hit_record, ignore_hit_record);
+			return HitTestPlane(
+			  plane,
+			  ray,
+			  hit_record,
+			  ignore_hit_record,
+			  reverse_culling
+			);
 		}
 		break;
 		case PrimitiveType::kSphere:
 		{
 			const auto& sphere {dynamic_cast<const Sphere&>(primitive)};
-			return HitTestSphere(sphere, ray, hit_record, ignore_hit_record);
+			return HitTestSphere(
+			  sphere,
+			  ray,
+			  hit_record,
+			  ignore_hit_record,
+			  reverse_culling
+			);
 		}
 		break;
 		case PrimitiveType::kTriangle:
 		{
 			const auto& triangle {dynamic_cast<const Triangle&>(primitive)};
-			return HitTestTriangle(triangle, ray, hit_record, ignore_hit_record);
+			return HitTestTriangle(
+			  triangle,
+			  ray,
+			  hit_record,
+			  ignore_hit_record,
+			  reverse_culling
+			);
 		}
 		break;
 		case PrimitiveType::kTriangleMesh:
 		{
 			const auto& mesh {dynamic_cast<const TriangleMesh&>(primitive)};
-			return HitTestMesh(mesh, ray, hit_record, ignore_hit_record);
+			return HitTestMesh(
+			  mesh,
+			  ray,
+			  hit_record,
+			  ignore_hit_record,
+			  reverse_culling
+			);
 		}
 		break;
 		default: return false; break;

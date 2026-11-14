@@ -106,6 +106,12 @@ namespace gfx
 			}
 		}
 
+		[[nodiscard]] static bool IsThinWalled(const SurfaceProperties& surface)
+		{
+			return surface.thickness <= 0.f &&
+			  surface.attenuation_distance >= std::numeric_limits<float>::max();
+		}
+
 		const uint32_t ao_sample_count_ {1};
 		const float ao_radius_ {10.f};
 
@@ -119,6 +125,13 @@ namespace gfx
 			ColorRgba weight {ColorRgba::Black()};
 		};
 
+		struct MediumState
+		{
+			bool inside {false};
+			ColorRgba attenuation_color {ColorRgba::White()};
+			float attenuation_distance {std::numeric_limits<float>::max()};
+		};
+
 		void RenderPixel(uint32_t screen_x, uint32_t screen_y);
 
 		[[nodiscard]] Ray
@@ -130,7 +143,8 @@ namespace gfx
 		bool HitTest(
 		  const Ray& ray,
 		  RayHitRecord& closest_hit_record,
-		  bool ignore_hit_record = false
+		  bool ignore_hit_record = false,
+		  bool reverse_culling = false
 		) const;
 
 		[[nodiscard]] ColorRgba EnvironmentRadiance(const Vector3& direction) const;
@@ -171,6 +185,13 @@ namespace gfx
 		void WriteColorToBuffer(uint32_t pixel_index, const ColorRgba& color);
 
 		void WriteColorFromBufferToScreen(uint32_t pixel_index) const;
+
+		static BounceSample SampleReflectOrRefract(
+		  const ShadingInput& input,
+		  const SurfaceProperties& surface,
+		  MediumState& medium,
+		  uint32_t& hash_state
+		);
 	};
 } //namespace gfx
 #endif //SOFTWARE_PATH_TRACER_HEADER

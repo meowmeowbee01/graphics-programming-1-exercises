@@ -139,13 +139,15 @@ ColorRgba SoftwarePathTracer::TracePath(
 	auto accumulated_color {ColorRgba::Black()};
 	auto throughput {ColorRgba::White()};
 	Ray current_ray {ray};
+	MediumState medium {};
 	for (int bounces {0}; bounces < max_bounces; ++bounces)
 	{
 		RayHitRecord hit_record {};
-		if (!HitTest(current_ray, hit_record))
+		if (!HitTest(current_ray, hit_record, false, medium.inside))
 		{
-			accumulated_color +=
-			  throughput * EnvironmentRadiance(current_ray.direction);
+			accumulated_color += throughput *
+			  (IsAccumulatedVisMode() ? EnvironmentRadiance(current_ray.direction)
+			                          : GetScene().background_color);
 			break;
 		}
 		auto shading_input {ConstructShadingInput(hit_record)};
@@ -153,25 +155,52 @@ ColorRgba SoftwarePathTracer::TracePath(
 		auto surface {GetSurfaceProperties(mat, shading_input)};
 		surface.roughness = std::max(surface.roughness, 1e-2f);
 		shading_input.world_normal = surface.shading_normal;
-		auto color {
-		  GetLinearColor(hit_record, shading_input, mat, surface, hash_state)
-		};
-		accumulated_color += throughput * color;
-		const auto [direction, pdf] {
-		  GetHemiSphereSample(shading_input, surface, hash_state)
-		};
-		const auto n_dot_l {Vector3::Dot(shading_input.world_normal, direction)};
-		if (n_dot_l <= 0.f || pdf < 1e-6f) break;
-		shading_input.light_direction = direction;
-		shading_input.is_indirect = true;
-		const auto brdf {mat.Shade(shading_input, surface)};
-		const BounceSample bounce_sample {
-		  .direction = direction,
-		  .weight = brdf * n_dot_l / pdf
-		};
+		if (
+		  medium.inside &&
+		  medium.attenuation_distance < std::numeric_limits<float>::max()
+		)
+		{
+			const auto exponent {hit_record.t / medium.attenuation_distance};
+			throughput *= ColorRgba {
+			  std::powf(medium.attenuation_color.r, exponent),
+			  std::powf(medium.attenuation_color.g, exponent),
+			  std::powf(medium.attenuation_color.b, exponent)
+			};
+		}
+		if (!IsBouncedVisMode() || surface.transmission <= 0.f)
+		{
+			auto color {
+			  GetLinearColor(hit_record, shading_input, mat, surface, hash_state)
+			};
+			accumulated_color += throughput * color;
+		}
+		BounceSample bounce_sample {};
+		if (surface.transmission > 0.f)
+			bounce_sample =
+			  SampleReflectOrRefract(shading_input, surface, medium, hash_state);
+		else
+		{
+			const auto [direction, pdf] {
+			  GetHemiSphereSample(shading_input, surface, hash_state)
+			};
+			const auto cos_theta {
+			  Vector3::Dot(shading_input.world_normal, direction)
+			};
+			if (cos_theta <= 0.f || pdf < 1e-6f) break;
+			shading_input.light_direction = direction;
+			shading_input.is_indirect = true;
+			const auto brdf {mat.Shade(shading_input, surface)};
+			bounce_sample.direction = direction;
+			bounce_sample.weight = brdf * cos_theta / pdf;
+		}
 		throughput *= bounce_sample.weight;
-		current_ray =
-		  Ray {.origin = shading_input.shadow_origin, .direction = direction};
+		current_ray = Ray {
+		  .origin =
+		    Vector3::Dot(bounce_sample.direction, shading_input.world_normal) < 0.f
+		    ? shading_input.world_position - shading_input.world_normal * 1e-3f
+		    : shading_input.shadow_origin,
+		  .direction = bounce_sample.direction
+		};
 	}
 	return accumulated_color;
 }
@@ -179,7 +208,8 @@ ColorRgba SoftwarePathTracer::TracePath(
 bool SoftwarePathTracer::HitTest(
   const Ray& ray,
   RayHitRecord& closest_hit_record,
-  const bool ignore_hit_record
+  const bool ignore_hit_record,
+  const bool reverse_culling
 ) const
 {
 	bool did_hit {false};
@@ -199,7 +229,8 @@ bool SoftwarePathTracer::HitTest(
 		    primitive,
 		    transformed_ray,
 		    hit_record,
-		    ignore_hit_record
+		    ignore_hit_record,
+		    reverse_culling
 		  )
 		)
 		{
@@ -559,4 +590,49 @@ void SoftwarePathTracer::WriteColorFromBufferToScreen(
 		color.Clamp();
 	}
 	WriteColorToScreen(pixel_index, color);
+}
+
+SoftwarePathTracer::BounceSample SoftwarePathTracer::SampleReflectOrRefract(
+  const ShadingInput& input,
+  const SurfaceProperties& surface,
+  MediumState& medium,
+  uint32_t& hash_state
+)
+{
+	const auto incoming {-input.view_direction};
+	Vector3 normal {input.world_normal};
+	if (Vector3::Dot(incoming, normal) > 0.f) normal = -normal;
+	if (IsThinWalled(surface))
+	{
+		if (
+		  const auto fresnel {
+		    FresnelFunctionSchlick(normal, input.view_direction, surface.f0).r
+		  };
+		  NextFloat(hash_state) < fresnel
+		)
+			return {
+			  .direction = Vector3::Reflect(incoming, normal),
+			  .weight = ColorRgba::White()
+			};
+		return {.direction = incoming, .weight = surface.albedo};
+	}
+	const auto eta {medium.inside ? surface.ior : 1.f / surface.ior};
+	const auto refracted {Vector3::Refract(incoming, normal, eta)};
+	const auto total_internal_reflection {refracted.SqrMagnitude() < 1e-8f};
+	const auto schlick_dir {medium.inside ? -refracted : input.view_direction};
+	const auto fresnel {
+	  FresnelFunctionSchlick(normal, schlick_dir, surface.f0).r
+	};
+	if (total_internal_reflection || NextFloat(hash_state) < fresnel)
+		return {
+		  .direction = Vector3::Reflect(incoming, normal),
+		  .weight = ColorRgba::White()
+		};
+	medium.inside = !medium.inside;
+	medium.attenuation_color =
+	  medium.inside ? surface.attenuation_color : ColorRgba::White();
+	medium.attenuation_distance = medium.inside
+	  ? surface.attenuation_distance
+	  : std::numeric_limits<float>::max();
+	return {.direction = refracted, .weight = surface.albedo};
 }
