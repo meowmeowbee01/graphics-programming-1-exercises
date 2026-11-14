@@ -181,6 +181,12 @@ bool SoftwarePathTracer::IsFinalBounce(
 	auto surface {GetSurfaceProperties(mat, shading_input)};
 	surface.roughness = std::max(surface.roughness, 1e-2f);
 	shading_input.world_normal = surface.shading_normal;
+	if (IsAlphaSkipped(surface, hash_state))
+	{
+		current_ray.origin += current_ray.direction * (hit_record.t + 1e-3f);
+		--bounces;
+		return false;
+	}
 	Attenuate(throughput, medium, hit_record);
 	if (!IsBouncedVisMode() || surface.transmission <= 0.f)
 	{
@@ -690,4 +696,19 @@ void SoftwarePathTracer::WriteColorFromBufferToScreen(
 		color.Clamp();
 	}
 	WriteColorToScreen(pixel_index, color);
+}
+
+bool SoftwarePathTracer::IsAlphaSkipped(
+  const SurfaceProperties& surface,
+  uint32_t& hash_state
+)
+{
+	if (surface.transmission > 0.f) return false;
+	switch (surface.alpha_params.mode)
+	{
+	case AlphaMode::kMask: return surface.albedo.a < surface.alpha_params.cutoff;
+	case AlphaMode::kBlend: return surface.albedo.a < NextFloat(hash_state);
+	case AlphaMode::kOpaque:
+	default: return false;
+	}
 }

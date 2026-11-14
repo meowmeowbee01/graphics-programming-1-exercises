@@ -224,6 +224,9 @@ namespace gfx
 		void WriteColorToBuffer(uint32_t pixel_index, const ColorRgba& color);
 
 		void WriteColorFromBufferToScreen(uint32_t pixel_index) const;
+
+		static bool
+		IsAlphaSkipped(const SurfaceProperties& surface, uint32_t& hash_state);
 	};
 } //namespace gfx
 #endif //SOFTWARE_PATH_TRACER_HEADER
