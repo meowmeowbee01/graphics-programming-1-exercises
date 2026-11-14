@@ -111,6 +111,16 @@ namespace gfx
 			  surface.attenuation_distance >= std::numeric_limits<float>::max();
 		}
 
+		[[nodiscard]] static ColorRgba GetHeat(const float count, const float max)
+		{
+			const auto t {std::clamp(count / max, 0.f, 1.f)};
+			return {
+			  std::clamp(2.f * t - 1.f, 0.f, 1.f),
+			  t < .5f ? 2.f * t : 2.f * (1.f - t),
+			  std::clamp(1.f - 2.f * t, 0.f, 1.f)
+			};
+		}
+
 		const uint32_t ao_sample_count_ {1};
 		const float ao_radius_ {10.f};
 
@@ -139,7 +149,7 @@ namespace gfx
 		ColorRgba
 		TracePath(const Ray& ray, uint32_t& hash_state, int max_bounces = 8) const;
 
-		bool Bounce(
+		bool IsFinalBounce(
 		  ColorRgba& accumulated_color,
 		  ColorRgba& throughput,
 		  Ray& current_ray,
@@ -166,12 +176,27 @@ namespace gfx
 		  const TriangleMesh& mesh
 		);
 
+		static void Attenuate(
+		  ColorRgba& throughput,
+		  const MediumState& medium,
+		  const RayHitRecord& hit_record
+		);
+
 		[[nodiscard]] ColorRgba GetLinearColor(
 		  const RayHitRecord& hit_record,
 		  const ShadingInput& shading_input,
 		  const Material& material,
 		  const SurfaceProperties& surface,
 		  uint32_t& hash_state
+		) const;
+
+		[[nodiscard]] float
+		TraceAo(const ShadingInput& shading_input, uint32_t& hash_state) const;
+
+		[[nodiscard]] ColorRgba DirectIllumination(
+		  const ShadingInput& shading_input,
+		  const Material& material,
+		  const SurfaceProperties& surface
 		) const;
 
 		static BounceSample SampleReflectOrRefract(
@@ -181,15 +206,12 @@ namespace gfx
 		  uint32_t& hash_state
 		);
 
-		static ColorRgba GetHeat(float count, float max);
-
-		[[nodiscard]] float
-		TraceAo(const ShadingInput& shading_input, uint32_t& hash_state) const;
-
-		[[nodiscard]] ColorRgba DirectIllumination(
-		  const ShadingInput& shading_input,
+		std::optional<BounceSample> GetBounceSample(
+		  ShadingInput& input,
+		  const SurfaceProperties& surface,
 		  const Material& material,
-		  const SurfaceProperties& surface
+		  MediumState& medium,
+		  uint32_t& hash_state
 		) const;
 
 		static ColorRgba
