@@ -74,14 +74,13 @@ namespace gfx
 		}
 
 		[[nodiscard]] bool IsAccumulatedVisMode() const
-		{
-			return gfx::IsAccumulatedVisMode(
-			  context_->debug_params.visualization_mode
-			);
-		}
+		{ return IsAccumulated(context_->debug_params.visualization_mode); }
 
 		[[nodiscard]] bool IsBouncedVisMode() const
-		{ return gfx::IsBouncedVisMode(context_->debug_params.visualization_mode); }
+		{ return IsBounced(context_->debug_params.visualization_mode); }
+
+		[[nodiscard]] bool IsToneMappedVisMode() const
+		{ return IsToneMapped(context_->debug_params.visualization_mode); }
 
 		[[nodiscard]] uint32_t
 		GetPixelIndex(const uint32_t screen_x, const uint32_t screen_y) const
@@ -166,6 +165,15 @@ namespace gfx
 		  uint32_t& hash_state
 		) const;
 
+		static BounceSample SampleReflectOrRefract(
+		  const ShadingInput& input,
+		  const SurfaceProperties& surface,
+		  MediumState& medium,
+		  uint32_t& hash_state
+		);
+
+		static ColorRgba GetHeat(float count, float max);
+
 		[[nodiscard]] float
 		TraceAo(const ShadingInput& shading_input, uint32_t& hash_state) const;
 
@@ -185,13 +193,6 @@ namespace gfx
 		void WriteColorToBuffer(uint32_t pixel_index, const ColorRgba& color);
 
 		void WriteColorFromBufferToScreen(uint32_t pixel_index) const;
-
-		static BounceSample SampleReflectOrRefract(
-		  const ShadingInput& input,
-		  const SurfaceProperties& surface,
-		  MediumState& medium,
-		  uint32_t& hash_state
-		);
 	};
 } //namespace gfx
 #endif //SOFTWARE_PATH_TRACER_HEADER

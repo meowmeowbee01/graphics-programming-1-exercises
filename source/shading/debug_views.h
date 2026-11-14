@@ -32,10 +32,11 @@ namespace gfx
 		kMax,
 	};
 
-	inline bool IsAccumulatedVisMode(const VisualizationMode mode)
+	inline bool IsAccumulated(const VisualizationMode mode)
 	{
 		switch (mode)
 		{
+		case VisualizationMode::kBounceCount:
 		case VisualizationMode::kAo:
 		case VisualizationMode::kDirectOnly:
 		case VisualizationMode::kNone: return true;
@@ -43,11 +44,22 @@ namespace gfx
 		}
 	}
 
-	inline bool IsBouncedVisMode(const VisualizationMode mode)
+	inline bool IsBounced(const VisualizationMode mode)
 	{
 		switch (mode)
 		{
 		case VisualizationMode::kBounceCount:
+		case VisualizationMode::kNone: return true;
+		default: return false;
+		}
+	}
+
+	inline bool IsToneMapped(const VisualizationMode mode)
+	{
+		switch (mode)
+		{
+		case VisualizationMode::kAo:
+		case VisualizationMode::kDirectOnly:
 		case VisualizationMode::kNone: return true;
 		default: return false;
 		}
