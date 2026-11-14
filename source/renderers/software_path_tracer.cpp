@@ -174,6 +174,14 @@ ColorRgba SoftwarePathTracer::TracePath(
 			};
 			accumulated_color += throughput * color;
 		}
+		if (bounces >= 3)
+		{
+			const auto survival_probability {
+			  std::clamp(throughput.Luminance(), .05f, .95f)
+			};
+			if (NextFloat(hash_state) > survival_probability) break;
+			throughput *= 1 / survival_probability;
+		}
 		BounceSample bounce_sample {};
 		if (surface.transmission > 0.f)
 			bounce_sample =
