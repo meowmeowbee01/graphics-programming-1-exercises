@@ -436,7 +436,7 @@ int main(int, char**)
 				active_scene->camera.MoveForward(
 				  -mouse_y * current_movement_speed * 0.1f
 				);
-				active_scene->camera.Yaw(mouse_x * current_rotation_speed);
+				active_scene->camera.Yaw(-mouse_x * current_rotation_speed);
 			}
 		}
 
