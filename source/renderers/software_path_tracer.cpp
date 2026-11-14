@@ -73,8 +73,8 @@ void SoftwarePathTracer::RenderPixel(
 	)};
 	const auto ray {GetRay(screen_x, screen_y, hash_state)};
 	const auto color {
-	  IsBouncedVisMode() ? TracePath(ray, hash_state)
-	                     : TracePath(ray, hash_state, 1)
+	  IsDirectOnlyVisMode() ? TracePath(ray, hash_state, 1)
+	                     : TracePath(ray, hash_state)
 	};
 	if (color.IsFinite()) WriteColor(pixel_index, color);
 	else WriteColor(pixel_index, ColorRgba::Black());
@@ -187,8 +187,8 @@ bool SoftwarePathTracer::IsFinalBounce(
 		--bounces;
 		return false;
 	}
-	Attenuate(throughput, medium, hit_record);
-	if (!IsBouncedVisMode() || surface.transmission <= 0.f)
+	if (medium.inside) Attenuate(throughput, medium, hit_record);
+	if (IsDirectOnlyVisMode() || surface.transmission <= 0.f)
 	{
 		auto color {
 		  GetLinearColor(hit_record, shading_input, mat, surface, hash_state)
@@ -259,7 +259,7 @@ ColorRgba
 SoftwarePathTracer::EnvironmentRadiance(const Vector3& direction) const
 {
 	const auto& scene {GetScene()};
-	if (!scene.environment_map.has_value() || !IsBouncedVisMode())
+	if (!scene.environment_map.has_value() || IsDirectOnlyVisMode())
 		return scene.background_color;
 	const auto& [texture, intensity, rotation_degrees, flip_horizontal] {
 	  scene.environment_map.value()
@@ -415,11 +415,7 @@ void SoftwarePathTracer::Attenuate(
   const RayHitRecord& hit_record
 )
 {
-	if (
-	  !medium.inside ||
-	  medium.attenuation_distance >= std::numeric_limits<float>::max()
-	)
-		return;
+	if (medium.attenuation_distance >= std::numeric_limits<float>::max()) return;
 	const auto exponent {hit_record.t / medium.attenuation_distance};
 	throughput *= ColorRgba {
 	  std::powf(medium.attenuation_color.r, exponent),

@@ -44,13 +44,13 @@ namespace gfx
 		}
 	}
 
-	inline bool IsBounced(const VisualizationMode mode)
+	inline bool IsDirectOnly(const VisualizationMode mode)
 	{
 		switch (mode)
 		{
 		case VisualizationMode::kBounceCount:
-		case VisualizationMode::kNone: return true;
-		default: return false;
+		case VisualizationMode::kNone: return false;
+		default: return true;
 		}
 	}
 

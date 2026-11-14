@@ -76,8 +76,8 @@ namespace gfx
 		[[nodiscard]] bool IsAccumulatedVisMode() const
 		{ return IsAccumulated(context_->debug_params.visualization_mode); }
 
-		[[nodiscard]] bool IsBouncedVisMode() const
-		{ return IsBounced(context_->debug_params.visualization_mode); }
+		[[nodiscard]] bool IsDirectOnlyVisMode() const
+		{ return IsDirectOnly(context_->debug_params.visualization_mode); }
 
 		[[nodiscard]] bool IsToneMappedVisMode() const
 		{ return IsToneMapped(context_->debug_params.visualization_mode); }
