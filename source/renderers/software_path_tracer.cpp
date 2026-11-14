@@ -133,7 +133,7 @@ Ray SoftwarePathTracer::GetRay(
 ColorRgba SoftwarePathTracer::TracePath(
   const Ray& ray,
   uint32_t& hash_state,
-  int max_bounces
+  const int max_bounces
 ) const
 {
 	auto accumulated_color {ColorRgba::Black()};
@@ -142,79 +142,98 @@ ColorRgba SoftwarePathTracer::TracePath(
 	MediumState medium {};
 	int bounces {0};
 	for (; bounces < max_bounces; ++bounces)
-	{
-		RayHitRecord hit_record {};
-		if (!HitTest(current_ray, hit_record, false, medium.inside))
-		{
-			accumulated_color +=
-			  throughput * EnvironmentRadiance(current_ray.direction);
-			break;
-		}
-		auto shading_input {ConstructShadingInput(hit_record)};
-		const auto& mat {GetMaterial(hit_record)};
-		auto surface {GetSurfaceProperties(mat, shading_input)};
-		surface.roughness = std::max(surface.roughness, 1e-2f);
-		shading_input.world_normal = surface.shading_normal;
 		if (
-		  medium.inside &&
-		  medium.attenuation_distance < std::numeric_limits<float>::max()
+		  Bounce(
+		    accumulated_color,
+		    throughput,
+		    current_ray,
+		    medium,
+		    bounces,
+		    hash_state
+		  )
 		)
-		{
-			const auto exponent {hit_record.t / medium.attenuation_distance};
-			throughput *= ColorRgba {
-			  std::powf(medium.attenuation_color.r, exponent),
-			  std::powf(medium.attenuation_color.g, exponent),
-			  std::powf(medium.attenuation_color.b, exponent)
-			};
-		}
-		if (!IsBouncedVisMode() || surface.transmission <= 0.f)
-		{
-			auto color {
-			  GetLinearColor(hit_record, shading_input, mat, surface, hash_state)
-			};
-			accumulated_color += throughput * color;
-		}
-		if (bounces >= 3)
-		{
-			const auto survival_probability {
-			  std::clamp(throughput.Luminance(), .05f, .95f)
-			};
-			if (NextFloat(hash_state) > survival_probability) break;
-			throughput *= 1 / survival_probability;
-		}
-		BounceSample bounce_sample {};
-		if (surface.transmission > 0.f)
-			bounce_sample =
-			  SampleReflectOrRefract(shading_input, surface, medium, hash_state);
-		else
-		{
-			const auto [direction, pdf] {
-			  GetHemiSphereSample(shading_input, surface, hash_state)
-			};
-			const auto cos_theta {
-			  Vector3::Dot(shading_input.world_normal, direction)
-			};
-			if (cos_theta <= 0.f || pdf < 1e-6f) break;
-			shading_input.light_direction = direction;
-			shading_input.is_indirect = true;
-			const auto brdf {mat.Shade(shading_input, surface)};
-			bounce_sample.direction = direction;
-			bounce_sample.weight = brdf * cos_theta / pdf;
-		}
-		throughput *= bounce_sample.weight;
-		current_ray = Ray {
-		  .origin =
-		    Vector3::Dot(bounce_sample.direction, shading_input.world_normal) < 0.f
-		    ? shading_input.world_position - shading_input.world_normal * 1e-3f
-		    : shading_input.shadow_origin,
-		  .direction = bounce_sample.direction
-		};
-	}
+			break;
 	if (
 	  context_->debug_params.visualization_mode == VisualizationMode::kBounceCount
 	)
 		accumulated_color = GetHeat(static_cast<float>(bounces), 5);
 	return accumulated_color;
+}
+
+bool SoftwarePathTracer::Bounce(
+  ColorRgba& accumulated_color,
+  ColorRgba& throughput,
+  Ray& current_ray,
+  MediumState& medium,
+  int bounces,
+  uint32_t& hash_state
+) const
+{
+	RayHitRecord hit_record {};
+	if (!HitTest(current_ray, hit_record, false, medium.inside))
+	{
+		accumulated_color +=
+		  throughput * EnvironmentRadiance(current_ray.direction);
+		return true;
+	}
+	auto shading_input {ConstructShadingInput(hit_record)};
+	const auto& mat {GetMaterial(hit_record)};
+	auto surface {GetSurfaceProperties(mat, shading_input)};
+	surface.roughness = std::max(surface.roughness, 1e-2f);
+	shading_input.world_normal = surface.shading_normal;
+	if (
+	  medium.inside &&
+	  medium.attenuation_distance < std::numeric_limits<float>::max()
+	)
+	{
+		const auto exponent {hit_record.t / medium.attenuation_distance};
+		throughput *= ColorRgba {
+		  std::powf(medium.attenuation_color.r, exponent),
+		  std::powf(medium.attenuation_color.g, exponent),
+		  std::powf(medium.attenuation_color.b, exponent)
+		};
+	}
+	if (!IsBouncedVisMode() || surface.transmission <= 0.f)
+	{
+		auto color {
+		  GetLinearColor(hit_record, shading_input, mat, surface, hash_state)
+		};
+		accumulated_color += throughput * color;
+	}
+	if (bounces >= 3)
+	{
+		const auto survival_probability {
+		  std::clamp(throughput.Luminance(), .05f, .95f)
+		};
+		if (NextFloat(hash_state) > survival_probability) return true;
+		throughput *= 1 / survival_probability;
+	}
+	BounceSample bounce_sample {};
+	if (surface.transmission > 0.f)
+		bounce_sample =
+		  SampleReflectOrRefract(shading_input, surface, medium, hash_state);
+	else
+	{
+		const auto [direction, pdf] {
+		  GetHemiSphereSample(shading_input, surface, hash_state)
+		};
+		const auto cos_theta {Vector3::Dot(shading_input.world_normal, direction)};
+		if (cos_theta <= 0.f || pdf < 1e-6f) return true;
+		shading_input.light_direction = direction;
+		shading_input.is_indirect = true;
+		const auto brdf {mat.Shade(shading_input, surface)};
+		bounce_sample.direction = direction;
+		bounce_sample.weight = brdf * cos_theta / pdf;
+	}
+	throughput *= bounce_sample.weight;
+	current_ray = Ray {
+	  .origin =
+	    Vector3::Dot(bounce_sample.direction, shading_input.world_normal) < 0.f
+	    ? shading_input.world_position - shading_input.world_normal * 1e-3f
+	    : shading_input.shadow_origin,
+	  .direction = bounce_sample.direction
+	};
+	return false;
 }
 
 bool SoftwarePathTracer::HitTest(

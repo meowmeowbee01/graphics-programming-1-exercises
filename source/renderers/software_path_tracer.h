@@ -139,6 +139,15 @@ namespace gfx
 		ColorRgba
 		TracePath(const Ray& ray, uint32_t& hash_state, int max_bounces = 8) const;
 
+		bool Bounce(
+		  ColorRgba& accumulated_color,
+		  ColorRgba& throughput,
+		  Ray& current_ray,
+		  MediumState& medium,
+		  int bounces,
+		  uint32_t& hash_state
+		) const;
+
 		bool HitTest(
 		  const Ray& ray,
 		  RayHitRecord& closest_hit_record,
