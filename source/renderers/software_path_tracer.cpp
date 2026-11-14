@@ -74,7 +74,7 @@ void SoftwarePathTracer::RenderPixel(
 	const auto ray {GetRay(screen_x, screen_y, hash_state)};
 	const auto color {
 	  IsDirectOnlyVisMode() ? TracePath(ray, hash_state, 1)
-	                     : TracePath(ray, hash_state)
+	                        : TracePath(ray, hash_state)
 	};
 	if (color.IsFinite()) WriteColor(pixel_index, color);
 	else WriteColor(pixel_index, ColorRgba::Black());
@@ -144,11 +144,11 @@ ColorRgba SoftwarePathTracer::TracePath(
 	for (; bounces < max_bounces; ++bounces)
 		if (
 		  IsFinalBounce(
+		    bounces,
 		    accumulated_color,
 		    throughput,
 		    current_ray,
 		    medium,
-		    bounces,
 		    hash_state
 		  )
 		)
@@ -161,11 +161,11 @@ ColorRgba SoftwarePathTracer::TracePath(
 }
 
 bool SoftwarePathTracer::IsFinalBounce(
+  int& bounces,
   ColorRgba& accumulated_color,
   ColorRgba& throughput,
   Ray& current_ray,
   MediumState& medium,
-  int bounces,
   uint32_t& hash_state
 ) const
 {
@@ -183,18 +183,14 @@ bool SoftwarePathTracer::IsFinalBounce(
 	shading_input.world_normal = surface.shading_normal;
 	if (IsAlphaSkipped(surface, hash_state))
 	{
-		current_ray.origin += current_ray.direction * (hit_record.t + 1e-3f);
+		current_ray.origin += current_ray.direction * (hit_record.t + 1e-5f);
 		--bounces;
 		return false;
 	}
 	if (medium.inside) Attenuate(throughput, medium, hit_record);
 	if (IsDirectOnlyVisMode() || surface.transmission <= 0.f)
-	{
-		auto color {
-		  GetLinearColor(hit_record, shading_input, mat, surface, hash_state)
-		};
-		accumulated_color += throughput * color;
-	}
+		accumulated_color += throughput *
+		  GetLinearColor(hit_record, shading_input, mat, surface, hash_state);
 	if (bounces >= 3)
 	{
 		const auto survival_probability {

@@ -150,11 +150,11 @@ namespace gfx
 		TracePath(const Ray& ray, uint32_t& hash_state, int max_bounces = 8) const;
 
 		bool IsFinalBounce(
+		  int& bounces,
 		  ColorRgba& accumulated_color,
 		  ColorRgba& throughput,
 		  Ray& current_ray,
 		  MediumState& medium,
-		  int bounces,
 		  uint32_t& hash_state
 		) const;
 
