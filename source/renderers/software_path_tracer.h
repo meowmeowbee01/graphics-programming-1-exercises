@@ -196,7 +196,8 @@ namespace gfx
 		[[nodiscard]] ColorRgba DirectIllumination(
 		  const ShadingInput& shading_input,
 		  const Material& material,
-		  const SurfaceProperties& surface
+		  const SurfaceProperties& surface,
+		  uint32_t& hash_state
 		) const;
 
 		static BounceSample SampleReflectOrRefract(
@@ -227,6 +228,9 @@ namespace gfx
 
 		static bool
 		IsAlphaSkipped(const SurfaceProperties& surface, uint32_t& hash_state);
+
+		ColorRgba
+		ShadowTransmittance(const Ray& shadow_ray, uint32_t& hash_state) const;
 	};
 } //namespace gfx
 #endif //SOFTWARE_PATH_TRACER_HEADER
