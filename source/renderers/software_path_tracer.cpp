@@ -549,6 +549,37 @@ ColorRgba SoftwarePathTracer::DirectIllumination(
 	return color;
 }
 
+ColorRgba SoftwarePathTracer::ShadowTransmittance(
+  const Ray& shadow_ray,
+  uint32_t& hash_state
+) const
+{
+	ColorRgba transmittance {ColorRgba::White()};
+	Ray ray {shadow_ray};
+	RayHitRecord hit {};
+	while (HitTest(ray, hit, false, true))
+	{
+		const auto shading_input {ConstructShadingInput(hit)};
+		const auto surface {GetSurfaceProperties(hit, shading_input)};
+		if (!IsAlphaSkipped(surface, hash_state))
+		{
+			if (surface.transmission <= 0.f || !IsThinWalled(surface))
+				return ColorRgba::Black();
+			const auto fresnel {FresnelFunctionSchlick(
+			  shading_input.world_normal,
+			  -ray.direction,
+			  surface.f0
+			)};
+			transmittance *= surface.albedo * (1.f - fresnel.r);
+			if (transmittance.Luminance() < 1e-3f) return ColorRgba::Black();
+		}
+		const auto travelled {hit.t + 1e-3f};
+		ray.origin += ray.direction * travelled;
+		ray.max -= travelled;
+	}
+	return transmittance;
+}
+
 SoftwarePathTracer::BounceSample SoftwarePathTracer::SampleReflectOrRefract(
   const ShadingInput& input,
   const SurfaceProperties& surface,
@@ -688,50 +719,4 @@ void SoftwarePathTracer::WriteColorFromBufferToScreen(
 		color.Clamp();
 	}
 	WriteColorToScreen(pixel_index, color);
-}
-
-bool SoftwarePathTracer::IsAlphaSkipped(
-  const SurfaceProperties& surface,
-  uint32_t& hash_state
-)
-{
-	if (surface.transmission > 0.f) return false;
-	switch (surface.alpha_params.mode)
-	{
-	case AlphaMode::kMask: return surface.albedo.a < surface.alpha_params.cutoff;
-	case AlphaMode::kBlend: return surface.albedo.a < NextFloat(hash_state);
-	case AlphaMode::kOpaque:
-	default: return false;
-	}
-}
-
-ColorRgba SoftwarePathTracer::ShadowTransmittance(
-  const Ray& shadow_ray,
-  uint32_t& hash_state
-) const
-{
-	ColorRgba transmittance {ColorRgba::White()};
-	Ray ray {shadow_ray};
-	RayHitRecord hit {};
-	while (HitTest(ray, hit, false, true))
-	{
-		const auto shading_input {ConstructShadingInput(hit)};
-		const auto surface {GetSurfaceProperties(hit, shading_input)};
-		if (!IsAlphaSkipped(surface, hash_state))
-		{
-			if (surface.transmission <= 0.f || !IsThinWalled(surface))
-				return ColorRgba::Black();
-			const auto fresnel {FresnelFunctionSchlick(
-			  shading_input.world_normal,
-			  -ray.direction,
-			  surface.f0
-			)};
-			transmittance *= surface.albedo * (1.f - fresnel.r);
-			if (transmittance.Luminance() < 1e-3f) return ColorRgba::Black();
-		}
-		const auto travelled {hit.t + 1e-3f};
-		ray.origin += ray.direction * travelled;
-		ray.max -= travelled;
-	}
-	return transmittance;
 }

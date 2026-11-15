@@ -121,6 +121,20 @@ namespace gfx
 			};
 		}
 
+		static bool
+		IsAlphaSkipped(const SurfaceProperties& surface, uint32_t& hash_state)
+		{
+			if (surface.transmission > 0.f) return false;
+			switch (surface.alpha_params.mode)
+			{
+			case AlphaMode::kMask:
+				return surface.albedo.a < surface.alpha_params.cutoff;
+			case AlphaMode::kBlend: return surface.albedo.a < NextFloat(hash_state);
+			case AlphaMode::kOpaque:
+			default: return false;
+			}
+		}
+
 		const uint32_t ao_sample_count_ {1};
 		const float ao_radius_ {10.f};
 
@@ -143,7 +157,7 @@ namespace gfx
 
 		void RenderPixel(uint32_t screen_x, uint32_t screen_y);
 
-		[[nodiscard]] Ray
+		Ray
 		GetRay(uint32_t screen_x, uint32_t screen_y, uint32_t& hash_state) const;
 
 		ColorRgba
@@ -200,6 +214,9 @@ namespace gfx
 		  uint32_t& hash_state
 		) const;
 
+		ColorRgba
+		ShadowTransmittance(const Ray& shadow_ray, uint32_t& hash_state) const;
+
 		static BounceSample SampleReflectOrRefract(
 		  const ShadingInput& input,
 		  const SurfaceProperties& surface,
@@ -225,12 +242,6 @@ namespace gfx
 		void WriteColorToBuffer(uint32_t pixel_index, const ColorRgba& color);
 
 		void WriteColorFromBufferToScreen(uint32_t pixel_index) const;
-
-		static bool
-		IsAlphaSkipped(const SurfaceProperties& surface, uint32_t& hash_state);
-
-		ColorRgba
-		ShadowTransmittance(const Ray& shadow_ray, uint32_t& hash_state) const;
 	};
 } //namespace gfx
 #endif //SOFTWARE_PATH_TRACER_HEADER
