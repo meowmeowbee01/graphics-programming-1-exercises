@@ -30,6 +30,9 @@ namespace gfx
 		void Render() override;
 
 	private:
+		std::vector<float> depth_buffer {};
+		static constexpr float kClearDepth {0.f};
+
 		[[nodiscard]] uint32_t
 		GetPixelIndex(const uint32_t screen_x, const uint32_t screen_y) const
 		{ return screen_x + context_->surface_info.width * screen_y; }
@@ -56,9 +59,8 @@ namespace gfx
 		  const Vertex& v0,
 		  const Vertex& v1,
 		  const Vertex& v2,
-		  //uint32_t object_id,
 		  CullMode cull_mode
-		) const;
+		);
 
 		static bool PointInTriangle(
 		  const Vertex& v0,

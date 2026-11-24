@@ -36,6 +36,11 @@ void SoftwareRasterizer::Render()
 	    static_cast<uint8_t>(.26f * 255.f)
 	  )
 	);
+	depth_buffer = std::vector(
+	  static_cast<size_t>(context_->surface_info.width) *
+	    static_cast<size_t>(context_->surface_info.height),
+	  kClearDepth
+	);
 
 	auto& scene {*context_->scene_manager->GetActiveScene()};
 	const auto aspect_ratio {
@@ -73,40 +78,80 @@ void SoftwareRasterizer::Render()
 			  NotInFrustum(v1.position) ||
 			  NotInFrustum(v2.position)
 			)
-				return;
+				continue;
 			NdcToScreen(v0.position);
 			NdcToScreen(v1.position);
 			NdcToScreen(v2.position);
 			RasterizeTriangle(v0, v1, v2, mesh_clone->cull_mode);
 		}
 	}
+	if (context_->debug_params.visualization_mode == VisualizationMode::kDepth)
+		for (size_t i {0}; i < depth_buffer.size(); ++i)
+			WriteColorToScreen(
+			  i,
+			  ColorRgba {std::clamp(depth_buffer.at(i) * 50.f, 0.f, 1.f)}
+			);
 }
 
 void SoftwareRasterizer::RasterizeTriangle(
   const Vertex& v0,
   const Vertex& v1,
   const Vertex& v2,
-  //uint32_t object_id,
   const CullMode cull_mode
-) const
+)
 {
 	const auto& surface_info = context_->surface_info;
-	for (uint32_t screen_y {0}; screen_y < surface_info.height; ++screen_y)
-		for (uint32_t screen_x {0}; screen_x < surface_info.width; ++screen_x)
+	const auto min_x {std::min(
+	  {v0.position.x,
+	   v1.position.x,
+	   v2.position.x,
+	   static_cast<float>(surface_info.width - 1)}
+	)};
+	const auto max_x {
+	  std::max({v0.position.x, v1.position.x, v2.position.x, 0.f})
+	};
+	const auto min_y {std::min(
+	  {v0.position.y,
+	   v1.position.y,
+	   v2.position.y,
+	   static_cast<float>(surface_info.height - 1)}
+	)};
+	const auto max_y {
+	  std::max({v0.position.y, v1.position.y, v2.position.y, 0.f})
+	};
+	for (
+	  uint32_t screen_y {static_cast<uint32_t>(std::floor(min_y))};
+	  screen_y < static_cast<uint32_t>(std::ceil(max_y));
+	  ++screen_y
+	)
+		for (
+		  uint32_t screen_x {static_cast<uint32_t>(std::floor(min_x))};
+		  screen_x < static_cast<uint32_t>(std::ceil(max_x));
+		  ++screen_x
+		)
 		{
+			if (context_->debug_params.show_bounding_boxes)
+			{
+				WriteColorToScreen(screen_x, screen_y, ColorRgba {v0.position});
+				continue;
+			}
 			Vector2 position {
 			  static_cast<float>(screen_x) + .5f,
 			  static_cast<float>(screen_y) + .5f
 			};
 			RasterHitRecord hit {};
 			if (!PointInTriangle(v0, v1, v2, position, cull_mode, hit)) continue;
+			assert(
+			  hit.barycentric_coordinates.has_value() && "no barycentric coordinates"
+			);
+			const auto depth {InterpolateAttribute(
+			  std::array {v0.position.z, v1.position.z, v2.position.z},
+			  hit.barycentric_coordinates.value()
+			)};
+			if (depth < depth_buffer.at(GetPixelIndex(screen_x, screen_y))) continue;
+			depth_buffer.at(GetPixelIndex(screen_x, screen_y)) = depth;
 			auto color {ColorRgba::White()};
-			if (
-			  hit.barycentric_coordinates.has_value() &&
-			  v0.color.has_value() &&
-			  v1.color.has_value() &&
-			  v2.color.has_value()
-			)
+			if (v0.color.has_value() && v1.color.has_value() && v2.color.has_value())
 				color = ColorRgba {InterpolateAttribute(
 				  std::array {v0.color.value(), v1.color.value(), v2.color.value()},
 				  hit.barycentric_coordinates.value()
