@@ -4,8 +4,8 @@
 //  Copyright (c) 2026 Matthieu Delaere. All rights reserved.
 //==============================================================
 //--- Renderer Selection ---
-#define SOFTWARE_PATH_TRACER
-//#define SOFTWARE_RASTERIZER
+// #define SOFTWARE_PATH_TRACER
+#define SOFTWARE_RASTERIZER
 //#define HARDWARE_RASTERIZER
 
 //--- Defines ---
@@ -303,6 +303,9 @@ int main(int, char**)
 	context.scene_manager->NextScene();
 
 #elif defined(SOFTWARE_RASTERIZER)
+	context.scene_manager->CreateScene<NdcTriangleScene>();
+
+	context.scene_manager->NextScene();
 #elif defined(HARDWARE_RASTERIZER)
 #endif
 
