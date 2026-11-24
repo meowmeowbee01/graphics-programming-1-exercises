@@ -66,6 +66,12 @@ void SoftwareRasterizer::Render()
 			auto v0 {mesh_clone->vertices.at(mesh_clone->indices.at(i))};
 			auto v1 {mesh_clone->vertices.at(mesh_clone->indices.at(i + 1))};
 			auto v2 {mesh_clone->vertices.at(mesh_clone->indices.at(i + 2))};
+			if (
+			  NotInFrustum(v0.position) ||
+			  NotInFrustum(v1.position) ||
+			  NotInFrustum(v2.position)
+			)
+				return;
 			NdcToScreen(v0.position);
 			NdcToScreen(v1.position);
 			NdcToScreen(v2.position);

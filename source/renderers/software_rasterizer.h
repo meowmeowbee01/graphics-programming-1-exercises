@@ -42,6 +42,16 @@ namespace gfx
 			  (1.f - ndc.y) / 2.f * static_cast<float>(context_->surface_info.height);
 		}
 
+		static bool OutOfRange(const float value, const float min, const float max)
+		{ return value < min || value > max; }
+
+		static bool NotInFrustum(const Vector4& ndc)
+		{
+			return OutOfRange(ndc.x, -1.f, 1.f) ||
+			  OutOfRange(ndc.y, -1.f, 1.f) ||
+			  OutOfRange(ndc.z, 0.f, 1.f);
+		}
+
 		void RasterizeTriangle(
 		  const Vertex& v0,
 		  const Vertex& v1,
