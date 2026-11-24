@@ -5,6 +5,8 @@
 //==============================================================
 #include <scenes.h>
 #include <software_rasterizer.h>
+
+#include <numeric>
 using namespace gfx;
 
 //=============================================================================
@@ -96,11 +98,20 @@ void SoftwareRasterizer::RasterizeTriangle(
 			  static_cast<float>(screen_x) + .5f,
 			  static_cast<float>(screen_y) + .5f
 			};
+			RasterHitRecord hit {};
+			if (!PointInTriangle(v0, v1, v2, position, cull_mode, hit)) continue;
+			auto color {ColorRgba::White()};
 			if (
-			  RasterHitRecord hit {};
-			  PointInTriangle(v0, v1, v2, position, cull_mode, hit)
+			  hit.barycentric_coordinates.has_value() &&
+			  v0.color.has_value() &&
+			  v1.color.has_value() &&
+			  v2.color.has_value()
 			)
-				WriteColorToScreen(screen_x, screen_y, ColorRgba::White());
+				color = ColorRgba {InterpolateAttribute(
+				  std::array {v0.color.value(), v1.color.value(), v2.color.value()},
+				  hit.barycentric_coordinates.value()
+				)};
+			WriteColorToScreen(screen_x, screen_y, color);
 		}
 }
 
@@ -128,7 +139,7 @@ bool SoftwareRasterizer::PointInTriangle(
 	const auto c0 {Vector2::Cross(point - p0, p0 - p1)};
 	const auto c1 {Vector2::Cross(point - p1, p1 - p2)};
 	const auto c2 {Vector2::Cross(point - p2, p2 - p0)};
-	hit_record.barycentric_coordinates = {c0, c1};
+	hit_record.barycentric_coordinates = {c2 / signed_area, c0 / signed_area};
 	return (signed_area > 0.f && c0 > 0.f && c1 > 0.f && c2 > 0.f) ||
 	  (signed_area < 0.f && c0 < 0.f && c1 < 0.f && c2 < 0.f);
 }
@@ -162,4 +173,16 @@ void SoftwareRasterizer::WriteColorToScreen(
 	  static_cast<uint8_t>(color.g * 255.f),
 	  static_cast<uint8_t>(color.b * 255.f)
 	);
+}
+
+template<typename T>
+T SoftwareRasterizer::InterpolateAttribute(
+  const std::array<T, 3>& attributes,
+  const Vector2& barycentric_coordinates
+)
+{
+	const auto w1 {barycentric_coordinates.x};
+	const auto w2 {barycentric_coordinates.y};
+	const auto w0 {1.f - w1 - w2};
+	return attributes.at(0) * w0 + attributes.at(1) * w1 + attributes.at(2) * w2;
 }

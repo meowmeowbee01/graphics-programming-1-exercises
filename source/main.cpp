@@ -303,8 +303,9 @@ int main(int, char**)
 	context.scene_manager->NextScene();
 
 #elif defined(SOFTWARE_RASTERIZER)
+	context.scene_manager->CreateScene<ColorTriangleScene>();
+	//context.scene_manager->CreateScene<WorldTriangleScene>();
 	//context.scene_manager->CreateScene<NdcTriangleScene>();
-	context.scene_manager->CreateScene<WorldTriangleScene>();
 
 	context.scene_manager->NextScene();
 #elif defined(HARDWARE_RASTERIZER)

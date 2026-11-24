@@ -84,6 +84,12 @@ namespace gfx
 		  const ColorRgba& color
 		) const
 		{ WriteColorToScreen(GetPixelIndex(screen_x, screen_y), color); }
+
+		template<typename T>
+		static T InterpolateAttribute(
+		  const std::array<T, 3>& attributes,
+		  const Vector2& barycentric_coordinates
+		);
 	};
 } //namespace gfx
 #endif //SOFTWARE_RASTERIZER_HEADER
