@@ -59,6 +59,13 @@ namespace gfx
 		  RasterHitRecord& hit_record
 		);
 
+		static void TransformMesh(
+		  TriangleMesh& mesh,
+		  const Matrix& world_matrix,
+		  const Matrix& view_matrix,
+		  const Matrix& projection_matrix
+		);
+
 		void WriteColorToScreen(uint32_t pixel_index, const ColorRgba& color) const;
 
 		void WriteColorToScreen(

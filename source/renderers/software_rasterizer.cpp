@@ -35,15 +35,32 @@ void SoftwareRasterizer::Render()
 	  )
 	);
 
-	for (
-	  const auto& scene {*context_->scene_manager->GetActiveScene()};
-	  const auto& object : scene.objects
-	)
+	auto& scene {*context_->scene_manager->GetActiveScene()};
+	const auto aspect_ratio {
+	  static_cast<float>(context_->surface_info.width) /
+	  static_cast<float>(context_->surface_info.height)
+	};
+	const auto fov_angle {
+	  scene.camera.GetFovAngle() * std::numbers::pi_v<float> / 180.f
+	};
+	const auto tan_half_fov {std::tanf(fov_angle * 0.5f)};
+	const auto view {scene.camera.GetView().GetInverse()};
+	const auto projection {
+	  scene.camera.GetProjection(tan_half_fov, aspect_ratio)
+	};
+
+	for (const auto& object : scene.objects)
 	{
+		const auto world {
+		  object.instance_transformation.has_value()
+		    ? object.instance_transformation.value()
+		    : Matrix::CreateIdentity()
+		};
 		const auto mesh {
 		  *scene.primitives_factory.GetAs<TriangleMesh>(object.primitive_index)
 		};
-		const auto mesh_clone {mesh.CloneAs<TriangleMesh>()};
+		auto mesh_clone {mesh.CloneAs<TriangleMesh>()};
+		TransformMesh(*mesh_clone, world, view, projection);
 		for (size_t i {0}; i < mesh_clone->indices.size(); i += 3)
 		{
 			auto v0 {mesh_clone->vertices.at(mesh_clone->indices.at(i))};
@@ -97,7 +114,7 @@ bool SoftwareRasterizer::PointInTriangle(
 		return false;
 	if (cull_mode == CullMode::kFrontFaceCulling && signed_area >= 0.f)
 		return false;
-	if (std::abs(signed_area) < 1e4f) return false;
+	if (std::abs(signed_area) < 1e-4f) return false;
 
 	const Vector2 p0 {v0.position};
 	const Vector2 p1 {v1.position};
@@ -108,6 +125,23 @@ bool SoftwareRasterizer::PointInTriangle(
 	hit_record.barycentric_coordinates = {c0, c1};
 	return (signed_area > 0.f && c0 > 0.f && c1 > 0.f && c2 > 0.f) ||
 	  (signed_area < 0.f && c0 < 0.f && c1 < 0.f && c2 < 0.f);
+}
+
+void SoftwareRasterizer::TransformMesh(
+  TriangleMesh& mesh,
+  const Matrix& world_matrix,
+  const Matrix& view_matrix,
+  const Matrix& projection_matrix
+)
+{
+	const auto wvp {world_matrix * view_matrix * projection_matrix};
+	for (auto& vertex : mesh.vertices)
+	{
+		vertex.position = wvp.TransformPoint(vertex.position);
+		vertex.position.x /= vertex.position.w;
+		vertex.position.y /= vertex.position.w;
+		vertex.position.z /= vertex.position.w;
+	}
 }
 
 void SoftwareRasterizer::WriteColorToScreen(

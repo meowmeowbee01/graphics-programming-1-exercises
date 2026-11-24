@@ -115,11 +115,12 @@ namespace gfx
 
 		const Matrix& GetProjection(const float fov_y, const float aspect_ratio)
 		{
-			//TODO: create projection matrix
-			(void)fov_y;
-			(void)aspect_ratio;
-			(void)near_plane_;
-			(void)far_plane_;
+			projection_ = Matrix::CreatePerspectiveFovLH(
+			  fov_y,
+			  aspect_ratio,
+			  near_plane_,
+			  far_plane_
+			);
 			return projection_;
 		}
 
